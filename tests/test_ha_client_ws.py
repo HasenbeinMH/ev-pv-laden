@@ -19,6 +19,10 @@ async def _server(verbindungen: list):
             await ws.close()
             return ws
         await ws.send_json({"type": "auth_ok", "ha_version": "2026.10.0"})
+        cfg = await ws.receive_json()
+        assert cfg["type"] == "get_config"
+        await ws.send_json({"id": cfg["id"], "type": "result", "success": True,
+                            "result": {"time_zone": "Europe/Berlin"}})
         abo = await ws.receive_json()
         assert abo["type"] == "subscribe_entities"
         await ws.send_json({"id": abo["id"], "type": "result", "success": True, "result": None})
@@ -58,9 +62,10 @@ def test_verbinden_empfangen_abbruch_wiederverbinden(monkeypatch):
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
         await runner.cleanup()
-        return verbindungen, empfangen
+        return verbindungen, empfangen, client
 
-    verbindungen, empfangen = asyncio.run(ablauf())
+    verbindungen, empfangen, client = asyncio.run(ablauf())
+    assert client.zeitzone == "Europe/Berlin"
     assert verbindungen[0] == ["sensor.netz"]
     assert len(verbindungen) >= 2, "nach Abbruch neu verbunden"
     # Erstbestand, Aenderung, dann None beim Abbruch, danach wieder Werte

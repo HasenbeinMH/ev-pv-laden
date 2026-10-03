@@ -107,11 +107,13 @@ class HAClient:
         self.verbunden = False
         self.letzter_fehler: str | None = None
         self.ha_version: str | None = None
+        self.zeitzone: str | None = None      # aus get_config, fuer Tagesgrenzen
         self._bestand: dict[str, dict] = {}
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._ids = itertools.count(1)
         self._offen: dict[int, asyncio.Future] = {}
         self._abo_id: int | None = None
+        self._config_id: int | None = None
 
     async def laufen(self) -> None:
         """Dauerschleife mit Wiederverbinden. Als Task starten, mit cancel() beenden."""
@@ -161,6 +163,8 @@ class HAClient:
             self.ha_version = antwort.get("ha_version")
             self._ws = ws
 
+            self._config_id = next(self._ids)
+            await ws.send_json({"id": self._config_id, "type": "get_config"})
             self._abo_id = next(self._ids)
             await ws.send_json({"id": self._abo_id, "type": "subscribe_entities",
                                 "entity_ids": self.entity_ids})
@@ -186,7 +190,10 @@ class HAClient:
             for eid in zustand_anwenden(self._bestand, nachricht.get("event") or {}):
                 self.rueckruf(eid, self._bestand.get(eid), jetzt)
         elif art == "result":
-            if nid == self._abo_id:
+            if nid == self._config_id:
+                if nachricht.get("success"):
+                    self.zeitzone = (nachricht.get("result") or {}).get("time_zone")
+            elif nid == self._abo_id:
                 if not nachricht.get("success"):
                     raise HAFehler(f"subscribe_entities abgelehnt: {nachricht.get('error')}")
             elif (fut := self._offen.pop(nid, None)) and not fut.done():

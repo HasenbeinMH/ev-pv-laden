@@ -124,6 +124,9 @@ class Messwert:
     einheit: str | None = None
     empfangen: float | None = None        # time.monotonic() des letzten Empfangs
     empfangen_wand: float | None = None   # time.time() fuer die Anzeige
+    # Abstand zwischen zwei Empfaengen (Diagnose: wie oft kommt der Wert wirklich?)
+    intervall_letzt: float | None = None
+    intervall_max: float | None = None
 
 
 @dataclass
@@ -145,6 +148,10 @@ class Prozessabbild:
     def aktualisieren(self, entity_id: str, zustand: dict | None, mono: float) -> None:
         """Rueckruf des HA-Clients. zustand None = Entitaet weg oder Verbindung getrennt."""
         for mw in self._nach_entity.get(entity_id, []):
+            if zustand is not None and mw.empfangen is not None and mw.wert is not None:
+                dt = mono - mw.empfangen
+                mw.intervall_letzt = dt
+                mw.intervall_max = dt if mw.intervall_max is None else max(mw.intervall_max, dt)
             mw.wert = umrechnen(mw.signal, zustand)
             mw.roh = None if zustand is None else zustand.get("s")
             mw.einheit = None if zustand is None else (zustand.get("a") or {}).get("unit_of_measurement")
@@ -186,5 +193,7 @@ class Prozessabbild:
                 "alter_s": None if alter is None else round(alter, 1),
                 "gueltig": self.gueltig(name, jetzt),
                 "empfangen": mw.empfangen is not None,
+                "intervall_s": None if mw.intervall_letzt is None else round(mw.intervall_letzt, 1),
+                "intervall_max_s": None if mw.intervall_max is None else round(mw.intervall_max, 1),
             })
         return zeilen

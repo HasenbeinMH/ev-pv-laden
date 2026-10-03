@@ -5,8 +5,8 @@ Integration [go-e APIv2 Connect](https://github.com/marq24/ha-goecharger-api2)) 
 Hausakku-Priorität. Bilanziert genau, wie viel kWh aus PV, Hausakku und Netz ins Auto
 gingen, und meldet jede Ladung an den [EV Tracker](https://github.com/HasenbeinMH/ev-tracker-ha).
 
-> **Status: in Entwicklung (0.1.0 – Gerüst).** Das Add-on liest Messwerte und zeigt sie an,
-> schreibt aber noch nichts auf die Wallbox.
+> **Status: in Entwicklung (0.2.0 – Bilanz).** Das Add-on liest Messwerte, bilanziert PV/Akku/Netz
+> und legt die Zähler als HA-Entitäten an (MQTT), schreibt aber noch nichts auf die Wallbox.
 
 ## Prinzip
 
@@ -23,6 +23,8 @@ gingen, und meldet jede Ladung an den [EV Tracker](https://github.com/HasenbeinM
    `https://github.com/HasenbeinMH/ev-pv-laden` hinzufügen.
 2. „EV PV-Laden“ installieren, unter *Konfiguration* die Sensoren prüfen, starten.
 3. Oberfläche über die Seitenleiste öffnen: alle Messwerte müssen „gültig“ sein.
+4. Voraussetzung für die HA-Entitäten: Add-on *Mosquitto broker* und die MQTT-Integration.
+   Es erscheint das Gerät „EV PV-Laden“ mit `sensor.ev_pv_laden_kwh_pv`, `…_kwh_akku`, `…_kwh_netz`.
 
 `trockenlauf` bleibt eingeschaltet, bis die Regelung im Trockenlauf geprüft ist.
 
