@@ -4,276 +4,165 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>EV PV-Laden</title>
-  <link rel="stylesheet" href="static/style.css">
+  <link rel="stylesheet" href="static/style.css?v={{ version }}">
+  <script>
+    // Hell/Dunkel vor dem ersten Zeichnen setzen (kein Aufblitzen)
+    try { const t = localStorage.getItem("evpv-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
   <script src="static/echarts.min.js"></script>
 </head>
 <body>
-<header>
-  <h1>EV PV-Laden</h1>
-  <span class="version">{{ version }}</span>
-  <span id="trockenlauf" class="marke">…</span>
+<header class="kopf">
+  <div class="logo">
+    <div class="logo-box" data-icon="plug"></div>
+    <span class="name">EV PV-Laden</span>
+    <span id="marke" class="marke trocken">Trockenlauf</span>
+  </div>
+  <nav class="reiter">
+    <a href="#live" data-seite="live"><i data-icon="activity"></i><span>Live</span></a>
+    <a href="#bilanz" data-seite="bilanz"><i data-icon="scale"></i><span>Bilanz</span></a>
+    <a href="#ladungen" data-seite="ladungen"><i data-icon="history"></i><span>Ladevorgänge</span></a>
+    <a href="#diagnose" data-seite="diagnose"><i data-icon="stethoscope"></i><span>Diagnose</span></a>
+  </nav>
+  <div class="kopf-rechts">
+    <button id="theme" class="knopf-icon" type="button" title="Hell/Dunkel"></button>
+  </div>
 </header>
 
 <main>
-  <section class="karten">
-    <div class="karte"><div class="titel">Konfiguration</div><div id="konfig" class="wert">…</div></div>
-    <div class="karte"><div class="titel">Home Assistant</div><div id="ha" class="wert">…</div></div>
-    <div class="karte"><div class="titel">MQTT (HA-Entitäten)</div><div id="mqtt" class="wert">…</div></div>
-    <div class="karte"><div class="titel">Grenzen</div><div id="grenzen" class="wert">…</div></div>
-  </section>
-
   <section id="konfig-fehler" class="fehler" hidden></section>
 
-  <h2>Regelung <span id="treiber" class="klein"></span></h2>
-  <div id="modi" class="modi"></div>
-  <section class="karten">
-    <div class="karte"><div class="titel">Entscheidung</div><div id="entscheidung" class="wert gross">…</div>
-      <div id="grund" class="klein"></div></div>
-    <div class="karte"><div class="titel">Verfügbar (roh / geglättet)</div><div id="verfuegbar" class="wert">…</div></div>
-    <div class="karte"><div class="titel">Erlaubt / virtueller Netzwert</div><div id="erlaubt" class="wert">…</div></div>
+  <!-- ═══ Live ═══ -->
+  <section class="seite" id="seite-live">
+    <div class="block">
+      <div class="block-kopf"><i data-icon="plug"></i><h2>Lademodus</h2>
+        <span class="unter" id="treiber"></span></div>
+      <div id="modi" class="pillen"></div>
+    </div>
+
+    <div class="kacheln" style="margin-bottom:16px">
+      <div class="kachel"><div><div class="titel">Entscheidung</div><div class="wert" id="k-entscheidung">–</div>
+        <div class="unter" id="k-grund"></div></div><div class="icon-box" id="k-entscheidung-box" style="--c:var(--text-3)" data-icon="activity"></div></div>
+      <div class="kachel"><div><div class="titel">Erlaubte Ladeleistung</div><div class="wert" id="k-erlaubt">–</div>
+        <div class="unter" id="k-virtuell"></div></div><div class="icon-box" style="--c:var(--primary)" data-icon="zap"></div></div>
+      <div class="kachel"><div><div class="titel">Überschuss (geglättet)</div><div class="wert" id="k-verfuegbar">–</div>
+        <div class="unter" id="k-roh"></div></div><div class="icon-box" style="--c:var(--einspeisung)" data-icon="gauge"></div></div>
+      <div class="kachel"><div><div class="titel">PV-Prognose Rest heute</div><div class="wert" id="k-prognose">–</div>
+        <div class="unter" id="k-prognose-unter"></div></div><div class="icon-box" style="--c:var(--solar)" data-icon="sun"></div></div>
+    </div>
+
+    <div class="block">
+      <div class="block-kopf"><i data-icon="zap"></i><h2>Energiefluss</h2>
+        <span class="unter">jetzt · Linienstärke = Leistung</span></div>
+      <div class="fluss-rahmen"><svg class="fluss" id="fluss" viewBox="0 0 900 520" role="img" aria-label="Energiefluss"></svg></div>
+    </div>
+
+    <div class="block">
+      <div class="block-kopf"><i data-icon="chart-line"></i><h2>Leistungsverlauf</h2>
+        <span class="unter">Strategie und Messwerte</span>
+        <div class="rechts"><select id="zeitraum"><option value="900">15 min</option>
+          <option value="1800" selected>30 min</option><option value="3600">60 min</option></select></div></div>
+      <div id="diagramm" class="diagramm"></div>
+    </div>
+
+    <details class="block">
+      <summary class="block-kopf" style="margin:0"><i data-icon="settings"></i><h2>Parameter der Strategie</h2>
+        <span class="unter">Akku-Schwelle, Glättung, Start/Stopp</span></summary>
+      <form id="param-form" class="param-gitter" style="margin-top:14px"></form>
+      <div class="param-aktion"><button id="param-speichern" class="primaer" type="button">Speichern</button>
+        <span id="param-meldung" class="klein"></span></div>
+    </details>
   </section>
-  <div class="diagramm-kopf">
-    <span class="klein">Leistungen (W)</span>
-    <select id="zeitraum"><option value="900">15 min</option><option value="1800" selected>30 min</option><option value="3600">60 min</option></select>
-  </div>
-  <div id="diagramm" class="diagramm"></div>
 
-  <details class="parameter">
-    <summary>Parameter der Strategie</summary>
-    <form id="param-form" class="param-gitter"></form>
-    <div class="param-aktion"><button id="param-speichern" type="button">Speichern</button>
-      <span id="param-meldung" class="klein"></span></div>
-  </details>
-
-  <h3>Stellglied <span id="verriegelt" class="schlecht"></span></h3>
-  <p class="hinweis">Was der Treiber auf die go-e schreibt – im Trockenlauf nur, was er schreiben würde.</p>
-  <div class="tabelle-rahmen tabelle-hoch"><table><tbody id="aktionen"></tbody></table></div>
-
-  <h2>Bilanz</h2>
-  <section class="karten">
-    <div class="karte"><div class="titel">Jetzt ins Auto</div><div id="live" class="wert">…</div></div>
-    <div class="karte"><div class="titel">Laufende Ladung</div><div id="ladung" class="wert">…</div></div>
-    <div class="karte"><div class="titel">Zähler gesamt</div><div id="zaehler" class="wert">…</div></div>
+  <!-- ═══ Bilanz ═══ -->
+  <section class="seite" id="seite-bilanz">
+    <div class="block">
+      <div class="block-kopf"><i data-icon="scale"></i><h2>Heute ins Auto</h2>
+        <span class="unter">aufgeteilt auf den Zähler der Wallbox</span></div>
+      <div class="kacheln">
+        <div class="kachel"><div><div class="titel">aus PV</div><div class="wert" id="h-pv">–</div><div class="unter" id="h-pv-anteil"></div></div>
+          <div class="icon-box" style="--c:var(--solar)" data-icon="sun"></div></div>
+        <div class="kachel"><div><div class="titel">aus Hausakku</div><div class="wert" id="h-akku">–</div><div class="unter">&nbsp;</div></div>
+          <div class="icon-box" style="--c:var(--akku)" data-icon="battery-charging"></div></div>
+        <div class="kachel"><div><div class="titel">aus dem Netz</div><div class="wert" id="h-netz">–</div><div class="unter" id="h-ohne"></div></div>
+          <div class="icon-box" style="--c:var(--netz)" data-icon="utility-pole"></div></div>
+        <div class="kachel"><div><div class="titel">Laufende Ladung</div><div class="wert" id="h-ladung">–</div><div class="unter" id="h-ladung-unter"></div></div>
+          <div class="icon-box" style="--c:var(--auto)" data-icon="car"></div></div>
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="sun"></i><h2>PV-Prognose</h2><span class="unter" id="prognose-unter"></span></div>
+      <div id="prognose-diagramm" class="diagramm" style="height:240px"></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="list-checks"></i><h2>Tagesbilanz</h2>
+        <span class="unter">„Integral“ = aufintegrierte Leistung als Plausibilitätsprüfung</span></div>
+      <div class="tabelle-rahmen"><table>
+        <thead><tr><th>Tag</th><th class="zahl">PV</th><th class="zahl">Akku</th><th class="zahl">Netz</th>
+          <th class="zahl">ohne Aufteilung</th><th class="zahl">Wallbox</th><th class="zahl">Integral</th><th class="zahl">Abweichung</th></tr></thead>
+        <tbody id="tage"></tbody></table></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="gauge"></i><h2>Zähler gesamt</h2>
+        <span class="unter">auch in HA: sensor.ev_pv_laden_kwh_pv / _akku / _netz</span></div>
+      <div id="zaehler" class="klein"></div>
+    </div>
   </section>
 
-  <h3>Tagesbilanz</h3>
-  <p class="hinweis">Aufteilung auf den Zähler der Wallbox. „Integral“ = aufintegrierte Leistung als Plausibilitätsprüfung.</p>
-  <div class="tabelle-rahmen">
-    <table>
-      <thead><tr><th>Tag</th><th class="zahl">PV</th><th class="zahl">Akku</th><th class="zahl">Netz</th>
-        <th class="zahl">davon ohne Aufteilung</th><th class="zahl">Wallbox</th><th class="zahl">Integral</th><th class="zahl">Abweichung</th></tr></thead>
-      <tbody id="tage"></tbody>
-    </table>
-  </div>
+  <!-- ═══ Ladevorgänge ═══ -->
+  <section class="seite" id="seite-ladungen">
+    <div class="block">
+      <div class="block-kopf"><i data-icon="history"></i><h2>Ladevorgänge</h2>
+        <span class="unter">Beginn &gt; 50 W für 1 min · Ende nach 15 min ohne Leistung oder beim Abstecken</span></div>
+      <div class="tabelle-rahmen"><table>
+        <thead><tr><th>Beginn</th><th>Ende</th><th class="zahl">PV</th><th class="zahl">Akku</th><th class="zahl">Netz</th>
+          <th class="zahl">Summe</th><th>PV-Anteil</th><th>Grund</th></tr></thead>
+        <tbody id="vorgaenge"></tbody></table></div>
+    </div>
+  </section>
 
-  <h3>Ladevorgänge</h3>
-  <div class="tabelle-rahmen">
-    <table>
-      <thead><tr><th>Beginn</th><th>Ende</th><th class="zahl">PV</th><th class="zahl">Akku</th><th class="zahl">Netz</th>
-        <th class="zahl">Summe</th><th>Grund</th></tr></thead>
-      <tbody id="vorgaenge"></tbody>
-    </table>
-  </div>
-
-  <h3>Ereignisse</h3>
-  <div class="tabelle-rahmen"><table><tbody id="ereignisse"></tbody></table></div>
-
-  <h2>Messwerte (Prozessabbild)</h2>
-  <p class="hinweis">Interne Konvention: Netzbezug +, Einspeisung −, Akku-Entladung +, Akku-Ladung −.
-    Ungültig = kein Wert oder älter als die konfigurierte Grenze.</p>
-  <div class="tabelle-rahmen">
-    <table>
-      <thead><tr><th>Signal</th><th>Entity</th><th class="zahl">Wert</th><th>Roh</th><th class="zahl">Alter</th><th class="zahl">Intervall (max)</th><th>Status</th></tr></thead>
-      <tbody id="signale"></tbody>
-    </table>
-  </div>
-
-  <h2>Protokoll</h2>
-  <pre id="protokoll" class="protokoll"></pre>
+  <!-- ═══ Diagnose ═══ -->
+  <section class="seite" id="seite-diagnose">
+    <div class="kacheln" style="margin-bottom:16px">
+      <div class="kachel"><div><div class="titel">Konfiguration</div><div class="wert" id="d-konfig" style="font-size:1.1rem">–</div><div class="unter" id="d-grenzen"></div></div>
+        <div class="icon-box" style="--c:var(--info)" data-icon="settings"></div></div>
+      <div class="kachel"><div><div class="titel">Home Assistant</div><div class="wert" id="d-ha" style="font-size:1.1rem">–</div><div class="unter" id="d-ha-unter"></div></div>
+        <div class="icon-box" style="--c:var(--info)" data-icon="house"></div></div>
+      <div class="kachel"><div><div class="titel">MQTT (HA-Entitäten)</div><div class="wert" id="d-mqtt" style="font-size:1.1rem">–</div><div class="unter" id="d-mqtt-unter"></div></div>
+        <div class="icon-box" style="--c:var(--info)" data-icon="list-checks"></div></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="activity"></i><h2>Messwerte</h2>
+        <span class="unter">intern: Netzbezug +, Einspeisung −, Akku-Entladung +, Akku-Ladung −</span></div>
+      <div class="tabelle-rahmen"><table>
+        <thead><tr><th>Signal</th><th>Entity</th><th class="zahl">Wert</th><th>Roh</th><th class="zahl">Alter</th><th class="zahl">Intervall (max)</th><th>Status</th></tr></thead>
+        <tbody id="signale"></tbody></table></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="plug"></i><h2>Stellglied</h2>
+        <span class="unter">was der Treiber auf die go-e schreibt – im Trockenlauf nur, was er schreiben würde</span>
+        <span id="verriegelt" class="schlecht"></span></div>
+      <div class="tabelle-rahmen tabelle-hoch"><table><tbody id="aktionen"></tbody></table></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="list-checks"></i><h2>Ereignisse</h2><span class="unter">Regelentscheidungen, Warnungen</span></div>
+      <div class="tabelle-rahmen tabelle-hoch"><table><tbody id="ereignisse"></tbody></table></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="history"></i><h2>Protokoll</h2></div>
+      <pre id="protokoll" class="protokoll"></pre>
+    </div>
+  </section>
 </main>
 
-<script>
-const fmt = (v, art) => {
-  if (v === null || v === undefined) return "–";
-  if (typeof v === "boolean") return v ? "ja" : "nein";
-  if (typeof v !== "number") return String(v);
-  if (art === "leistung") return Math.round(v).toLocaleString("de-DE") + " W";
-  if (art === "energie") return v.toLocaleString("de-DE", {maximumFractionDigits: 3}) + " kWh";
-  if (art === "prozent") return v.toLocaleString("de-DE", {maximumFractionDigits: 1}) + " %";
-  if (art === "strom") return v.toLocaleString("de-DE", {maximumFractionDigits: 1}) + " A";
-  return v.toLocaleString("de-DE");
-};
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+<footer class="statusleiste">
+  <span>v{{ version }}</span>
+  <span><span id="s-ha" class="punkt-status"></span>Home Assistant</span>
+  <span><span id="s-mqtt" class="punkt-status"></span>MQTT</span>
+  <span><span id="s-goe" class="punkt-status"></span>Wallbox</span>
+  <span class="rechts" id="s-treiber"></span>
+</footer>
 
-async function aktualisieren() {
-  try {
-    const s = await (await fetch("api/status")).json();
-    const tl = document.getElementById("trockenlauf");
-    tl.textContent = s.trockenlauf ? "Trockenlauf" : "LIVE";
-    tl.className = "marke " + (s.trockenlauf ? "ok" : "warnung");
-    document.getElementById("konfig").innerHTML = s.konfig_ok
-      ? '<span class="ok">in Ordnung</span>' : '<span class="schlecht">fehlerhaft</span>';
-    const fe = document.getElementById("konfig-fehler");
-    fe.hidden = s.konfig_ok;
-    fe.innerHTML = s.konfig_fehler.map(f => "<div>" + esc(f) + "</div>").join("");
-    document.getElementById("ha").innerHTML = s.ha.verbunden
-      ? '<span class="ok">verbunden</span> ' + esc(s.ha.version || "")
-      : '<span class="schlecht">getrennt</span> ' + esc(s.ha.fehler || "");
-    document.getElementById("mqtt").innerHTML = s.mqtt.verbunden
-      ? '<span class="ok">verbunden</span>'
-      : '<span class="schlecht">getrennt</span> ' + esc(s.mqtt.fehler || "");
-    if (s.treiber) {
-      document.getElementById("verriegelt").textContent = s.treiber.verriegelt ? "VERRIEGELT: " + s.treiber.verriegelt : "";
-      document.getElementById("aktionen").innerHTML = s.treiber.aktionen.map(([z, t, e]) =>
-        `<tr><td class="klein">${esc(z)}</td><td class="mono">${esc(t)}</td>
-         <td class="${e === "ok" ? "ok" : e === "Trockenlauf" ? "klein" : "schlecht"}">${esc(e)}</td></tr>`).join("")
-        || '<tr><td class="klein">noch keine Aktionen</td></tr>';
-    }
-    const g = s.grenzen;
-    document.getElementById("grenzen").textContent = g
-      ? `${g.min_strom_a}–${g.max_strom_a} A · 1-phasig ≤ ${g.strom_1ph_max_a} A · Alter ≤ ${g.max_alter_s} s` : "–";
-    document.getElementById("signale").innerHTML = s.signale.map(z => {
-      const st = z.gueltig ? '<span class="ok">gültig</span>'
-        : !z.empfangen ? '<span class="schlecht">' + (z.pflicht ? "fehlt" : "fehlt (optional)") + "</span>"
-        : '<span class="schlecht">ungültig</span>';
-      return `<tr><td>${esc(z.beschreibung)}${z.invertiert ? ' <span class="klein">(invertiert)</span>' : ""}</td>
-        <td class="mono">${esc(z.entity_id)}</td><td class="zahl">${fmt(z.wert, z.art)}</td>
-        <td class="mono klein">${esc(z.roh)} ${esc(z.einheit || "")}</td>
-        <td class="zahl">${z.alter_s === null ? "–" : z.alter_s.toLocaleString("de-DE") + " s"}</td>
-        <td class="zahl klein">${z.intervall_s === null ? "–" : z.intervall_s.toLocaleString("de-DE") + " s (" + z.intervall_max_s.toLocaleString("de-DE") + ")"}</td><td>${st}</td></tr>`;
-    }).join("");
-  } catch (e) { /* Add-on startet gerade neu */ }
-}
-const kwh = v => v === null || v === undefined ? "–"
-  : v.toLocaleString("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " kWh";
-const zeit = iso => iso ? new Date(iso).toLocaleString("de-DE", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}) : "läuft";
-async function bilanz() {
-  try {
-    const b = await (await fetch("api/bilanz")).json();
-    if (!b.zaehler) return;
-    const l = b.live;
-    document.getElementById("live").innerHTML = l
-      ? `PV ${fmt(l.pv, "leistung")} · Akku ${fmt(l.akku, "leistung")} · Netz ${fmt(l.netz, "leistung")}`
-      : '<span class="klein">keine gültigen Werte</span>';
-    const a = b.ladung;
-    document.getElementById("ladung").innerHTML = a
-      ? `seit ${zeit(a.start)}: ${kwh(a.eto)}<br><span class="klein">PV ${kwh(a.pv)} · Akku ${kwh(a.akku)} · Netz ${kwh(a.netz)}</span>`
-      : '<span class="klein">keine</span>';
-    const z = b.zaehler;
-    document.getElementById("zaehler").innerHTML =
-      `PV ${kwh(z.pv)} · Akku ${kwh(z.akku)} · Netz ${kwh(z.netz)}<br>
-       <span class="klein">ohne Aufteilung ${kwh(z.ohne)} · unsicher ${kwh(z.unsicher)}</span>`;
-    document.getElementById("tage").innerHTML = b.tage.map(t => {
-      const abw = t.eto > 0.05 ? ((t.trapez - t.eto) / t.eto * 100) : null;
-      const kl = abw === null ? "" : Math.abs(abw) > 5 ? "schlecht" : "ok";
-      return `<tr><td>${esc(t.datum)}</td><td class="zahl">${kwh(t.pv)}</td><td class="zahl">${kwh(t.akku)}</td>
-        <td class="zahl">${kwh(t.netz)}</td><td class="zahl">${kwh(t.ohne)}</td><td class="zahl">${kwh(t.eto)}</td>
-        <td class="zahl">${kwh(t.trapez)}</td><td class="zahl ${kl}">${abw === null ? "–" : abw.toLocaleString("de-DE", {maximumFractionDigits: 1}) + " %"}</td></tr>`;
-    }).join("") || '<tr><td colspan="8" class="klein">noch keine Daten</td></tr>';
-    document.getElementById("vorgaenge").innerHTML = b.vorgaenge.map(v =>
-      `<tr><td>${zeit(v.start)}</td><td>${zeit(v.ende)}</td><td class="zahl">${kwh(v.pv)}</td><td class="zahl">${kwh(v.akku)}</td>
-       <td class="zahl">${kwh(v.netz)}</td><td class="zahl">${kwh(v.eto)}</td><td class="klein">${esc(v.grund || "")}</td></tr>`
-    ).join("") || '<tr><td colspan="7" class="klein">noch keine</td></tr>';
-    const e = await (await fetch("api/ereignisse?anzahl=30")).json();
-    document.getElementById("ereignisse").innerHTML = e.ereignisse.map(x =>
-      `<tr><td class="klein">${zeit(x.zeit)}</td><td class="${x.ebene === "warnung" ? "warnung" : ""}">${esc(x.ebene)}</td>
-       <td class="klein">${esc(x.quelle)}</td><td>${esc(x.text)}</td></tr>`).join("");
-  } catch (e) {}
-}
-async function protokoll() {
-  try {
-    const p = await (await fetch("api/protokoll?zeilen=80")).json();
-    const el = document.getElementById("protokoll");
-    el.textContent = p.zeilen.join("\n");
-    el.scrollTop = el.scrollHeight;
-  } catch (e) {}
-}
-const PARAM = [
-  ["akku_soc_schwelle", "Akku-SoC-Schwelle (%) – darunter lädt der Hausakku zuerst"],
-  ["akku_unterstuetzung_w", "Akku darf Auto unterstützen mit max. (W)"],
-  ["akku_unterstuetzung_soc", "… oberhalb SoC (%)"],
-  ["tau_s", "Glättung, Zeitkonstante (s)"],
-  ["start_w", "Start ab Überschuss (W)"], ["start_verz_s", "… anliegend für (s)"],
-  ["stopp_w", "Stopp unter Überschuss (W)"], ["stopp_verz_s", "… anliegend für (s)"],
-  ["min_ladedauer_s", "Mindestladedauer (s)"], ["min_pause_s", "Mindestpause (s)"],
-];
-let paramGeladen = false, diagramm = null;
-async function parameterSenden(daten) {
-  const r = await fetch("api/parameter", {method: "POST", headers: {"Content-Type": "application/json"},
-                                          body: JSON.stringify(daten)});
-  const j = await r.json();
-  const m = document.getElementById("param-meldung");
-  m.textContent = j.ok ? "gespeichert" : j.fehler.join("; ");
-  m.className = j.ok ? "ok" : "schlecht";
-  regelung();
-}
-async function regelung() {
-  try {
-    const r = await (await fetch("api/regelung")).json();
-    if (!r.modi) return;
-    document.getElementById("treiber").textContent = "· Treiber: " + r.treiber;
-    document.getElementById("modi").innerHTML = Object.entries(r.modi).map(([k, n]) =>
-      `<button type="button" data-modus="${k}" class="${k === r.modus ? "aktiv" : ""}">${esc(n)}</button>`).join("");
-    document.querySelectorAll("#modi button").forEach(b =>
-      b.onclick = () => parameterSenden({modus: b.dataset.modus}));
-    const a = r.ausgang;
-    if (a) {
-      document.getElementById("entscheidung").innerHTML = a.freigabe
-        ? `<span class="ok">Laden</span> <span class="klein">(${esc(a.zustand)})</span>`
-        : `<span class="schlecht">nicht laden</span> <span class="klein">(${esc(a.zustand)})</span>`;
-      document.getElementById("grund").textContent = a.grund;
-      document.getElementById("verfuegbar").textContent = `${fmt(a.p_roh, "leistung")} / ${fmt(a.p_glatt, "leistung")}`;
-      document.getElementById("erlaubt").textContent = `${fmt(a.p_erlaubt, "leistung")} / ${fmt(a.pgrid_virtuell, "leistung")}`;
-    }
-    if (!paramGeladen) {
-      document.getElementById("param-form").innerHTML = PARAM.map(([k, t]) =>
-        `<label>${esc(t)}<input type="number" step="any" name="${k}" value="${r.parameter[k]}"></label>`).join("");
-      paramGeladen = true;
-    }
-  } catch (e) {}
-}
-document.getElementById("param-speichern").onclick = () => {
-  const daten = {};
-  new FormData(document.getElementById("param-form")).forEach((v, k) => daten[k] = Number(v));
-  parameterSenden(daten);
-};
-const FARBE = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-async function verlauf() {
-  try {
-    const sek = Number(document.getElementById("zeitraum").value);
-    const v = await (await fetch(`api/verlauf?sekunden=${sek}&schritt=${sek > 1800 ? 4 : 2}`)).json();
-    if (!window.echarts || !v.daten) return;
-    diagramm = diagramm || echarts.init(document.getElementById("diagramm"));
-    const i = Object.fromEntries(v.spalten.map((n, j) => [n, j]));
-    const reihe = (name, sp, farbe, extra = {}) => ({name, type: "line", showSymbol: false,
-      data: v.daten.map(d => [d[i.zeit] * 1000, d[i[sp]]]), lineStyle: {width: 1.5}, color: farbe, ...extra});
-    const text = FARBE("--text"), leise = FARBE("--leise"), linie = FARBE("--linie");
-    diagramm.setOption({
-      animation: false, grid: {left: 56, right: 16, top: 36, bottom: 32},
-      legend: {top: 0, textStyle: {color: text}},
-      tooltip: {trigger: "axis", valueFormatter: x => x === null || x === undefined ? "–" : Math.round(x).toLocaleString("de-DE") + " W"},
-      xAxis: {type: "time", axisLabel: {color: leise}, axisLine: {lineStyle: {color: linie}}},
-      yAxis: {type: "value", axisLabel: {color: leise}, splitLine: {lineStyle: {color: linie}}},
-      series: [
-        reihe("verfügbar roh", "p_roh", "#9aa5b1", {lineStyle: {width: 1, type: "dotted"}}),
-        reihe("verfügbar geglättet", "p_glatt", "#2563eb"),
-        reihe("P_erlaubt", "p_erlaubt", "#16a34a", {lineStyle: {width: 2.5}}),
-        reihe("Auto", "p_auto", "#f59e0b"),
-        reihe("Netz (+Bezug)", "netz", "#dc2626"),
-        reihe("Akku (+Entladung)", "akku", "#9333ea"),
-      ],
-    }, true);
-  } catch (e) {}
-}
-document.getElementById("zeitraum").onchange = verlauf;
-window.addEventListener("resize", () => diagramm && diagramm.resize());
-regelung(); verlauf();
-setInterval(regelung, 2000);
-setInterval(verlauf, 5000);
-aktualisieren(); protokoll(); bilanz();
-setInterval(bilanz, 5000);
-setInterval(aktualisieren, 2000);
-setInterval(protokoll, 10000);
-</script>
+<script src="static/app.js?v={{ version }}"></script>
 </body>
 </html>

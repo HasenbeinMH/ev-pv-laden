@@ -5,7 +5,7 @@ Integration [go-e APIv2 Connect](https://github.com/marq24/ha-goecharger-api2)) 
 Hausakku-Priorität. Bilanziert genau, wie viel kWh aus PV, Hausakku und Netz ins Auto
 gingen, und meldet jede Ladung an den [EV Tracker](https://github.com/HasenbeinMH/ev-tracker-ha).
 
-> **Status: in Entwicklung (0.4.0 – Treiber ids).** Das Add-on bilanziert PV/Akku/Netz, rechnet
+> **Status: in Entwicklung (0.5.0).** Das Add-on bilanziert PV/Akku/Netz, rechnet
 > die erlaubte Ladeleistung und kann sie über die go-e umsetzen. Standard ist der
 > **Trockenlauf**: es zeigt nur, was es schreiben würde. Scharfschalten erst nach
 > [docs/M5_Inbetriebnahme.md](docs/M5_Inbetriebnahme.md).
@@ -25,10 +25,15 @@ gingen, und meldet jede Ladung an den [EV Tracker](https://github.com/HasenbeinM
    `https://github.com/HasenbeinMH/ev-pv-laden` hinzufügen.
 2. „EV PV-Laden“ installieren, unter *Konfiguration* die Sensoren prüfen, starten.
 3. Oberfläche über die Seitenleiste öffnen: alle Messwerte müssen „gültig“ sein.
-4. Voraussetzung für die HA-Entitäten: Add-on *Mosquitto broker* und die MQTT-Integration.
+4. PV-Prognose (optional): Einstellungen → Energie → Solarmodule → „Prognose der
+   Solarproduktion“ zuordnen (z. B. Forecast.Solar, Leistung in **Watt**-Peak eintragen).
+5. Voraussetzung für die HA-Entitäten: Add-on *Mosquitto broker* und die MQTT-Integration.
    Es erscheint das Gerät „EV PV-Laden“ mit `sensor.ev_pv_laden_kwh_pv`, `…_kwh_akku`, `…_kwh_netz`.
 
 `trockenlauf` bleibt eingeschaltet, bis die Regelung im Trockenlauf geprüft ist.
+
+Die Oberfläche ist optisch an [eedc](https://github.com/supernova1963/eedc-homeassistant)
+angelehnt (Farben, Kacheln); Icons von [Lucide](https://lucide.dev) (ISC-Lizenz).
 
 ## Entwicklung
 

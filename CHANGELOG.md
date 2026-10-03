@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.5.0] - 2026-10-03
+
+Neue Oberfläche im Stil von [eedc](https://github.com/supernova1963/eedc-homeassistant).
+
+- Reiter Live / Bilanz / Ladevorgänge / Diagnose, Kennzahl-Kacheln, Hell/Dunkel-Umschalter
+- Energiefluss: PV, Netz, Hausakku, Haus und Auto mit animierten Linien; unter dem Auto die Aufteilung PV/Akku/Netz
+- PV-Prognose aus Home Assistant: Rest heute, morgen, Stundenwerte als Diagramm.
+  Voraussetzung: Prognose im Energie-Dashboard der PV-Quelle zugeordnet
+- Texte mit echten Umlauten
+
 ## [0.4.0] - 2026-10-03
 
 Treiber „ids“ – **kann jetzt auf die Wallbox schreiben, aber nur mit `trockenlauf: false`.**

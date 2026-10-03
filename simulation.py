@@ -186,3 +186,15 @@ def ueberschuss_aus_csv(pfad: str) -> tuple[list[float], float | None]:
             if soc0 is None and z.get("akku_soc"):
                 soc0 = float(z["akku_soc"])
     return werte, soc0
+
+
+def prognose_simuliert(jetzt) -> dict:
+    """Nur Entwicklung: Glockenkurve heute/morgen im Format von energy/solar_forecast."""
+    from datetime import timedelta
+    wh = {}
+    tag0 = jetzt.replace(hour=0, minute=0, second=0, microsecond=0)
+    for tag, faktor in ((0, 1.0), (1, 0.7)):
+        for h in range(7, 20):
+            t = tag0 + timedelta(days=tag, hours=h)
+            wh[t.isoformat()] = round(max(0.0, math.sin((h - 7) / 12 * math.pi)) * 6500 * faktor)
+    return {"sim": {"wh_hours": wh}}

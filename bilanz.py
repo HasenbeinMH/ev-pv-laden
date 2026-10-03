@@ -127,14 +127,14 @@ class Bilanz:
         if z.eto_letzt is None:
             z.eto_letzt, self._eto_zeit, self._erster_eto = eto_kwh, t, False
             self._topf_leeren()
-            return Buchung({q: 0.0 for q in QUELLEN}, "neu_angesetzt", "erster Zaehlerstand")
+            return Buchung({q: 0.0 for q in QUELLEN}, "neu_angesetzt", "erster Zählerstand")
         delta = eto_kwh - z.eto_letzt
         if delta == 0:
             # _eto_zeit bleibt die Zeit der letzten AENDERUNG – sonst waere das
             # Plausibilitaetsfenster bei seltenen Zaehler-Updates zu kurz
             return None
         if delta < 0:
-            hinweis = f"Zaehler der Wallbox zurueckgegangen ({z.eto_letzt:.3f} -> {eto_kwh:.3f} kWh)"
+            hinweis = f"Zähler der Wallbox zurückgegangen ({z.eto_letzt:.3f} -> {eto_kwh:.3f} kWh)"
             z.eto_letzt, self._eto_zeit, self._erster_eto = eto_kwh, t, False
             self._topf_leeren()
             return Buchung({q: 0.0 for q in QUELLEN}, "neu_angesetzt", hinweis)
@@ -148,7 +148,7 @@ class Bilanz:
         if self._eto_zeit is not None:
             erlaubt = MAX_LEISTUNG_KW * max(t - self._eto_zeit, 0) / 3600 + 0.05
             if delta > erlaubt:
-                hinweis = (f"Zaehlersprung {delta:.3f} kWh in {t - self._eto_zeit:.0f} s "
+                hinweis = (f"Zählersprung {delta:.3f} kWh in {t - self._eto_zeit:.0f} s "
                            f"unplausibel – neu angesetzt")
                 z.eto_letzt, self._eto_zeit = eto_kwh, t
                 self._topf_leeren()

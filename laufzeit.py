@@ -19,6 +19,7 @@ import mqtt_ha
 import protokoll
 from erfassung import Erfassung
 from ha_client import IST_ADDON, HAClient, verbindung_aus_umgebung
+from prognose import ABFRAGE_S as PROGNOSE_S, Prognose
 from prozessabbild import Prozessabbild
 from regelung import Regelung
 from treiber import Aktion, TreiberIds
@@ -44,6 +45,7 @@ class Laufzeit:
         self.zyklus_fehler: str | None = None
         self.simulator = None
         self.treiber: TreiberIds | None = None
+        self.prognose = Prognose()
         # Letzte Aktionen des Treibers fuer die Oberflaeche: (Zeit, Text, Ergebnis)
         self.aktionen: deque = deque(maxlen=60)
         self._trocken_letzt: frozenset = frozenset()
@@ -78,8 +80,10 @@ class Laufzeit:
         daten = verbindung_aus_umgebung()
         if os.environ.get("EVPV_SIMULATION") and not IST_ADDON:
             # Nur Entwicklung: Anlagenmodell statt Home Assistant
-            from simulation import LiveSimulator
+            from simulation import LiveSimulator, prognose_simuliert
             self.simulator = LiveSimulator(self.konfig, self.abbild, self.regelung)
+            jetzt = datetime.now(self.erfassung.tz)
+            self.prognose.setzen(prognose_simuliert(jetzt), jetzt)
             self.ha_fehler = "Simulation (EVPV_SIMULATION) – keine Verbindung zu Home Assistant"
             log.warning(self.ha_fehler)
         elif daten is None:
@@ -90,10 +94,11 @@ class Laufzeit:
             # Verriegelung direkt im Client: im Trockenlauf geht kein Dienstaufruf raus
             self.ha.schreiben_gesperrt = self.konfig.trockenlauf
             self._tasks.append(asyncio.create_task(self.ha.laufen(), name="ha_client"))
+            self._tasks.append(asyncio.create_task(self._prognose_holen(), name="prognose"))
 
         zugang = await mqtt_ha.zugang_holen()
         if zugang is None:
-            self.mqtt_fehler = "kein MQTT-Broker (HA-Entitaeten werden nicht angelegt)"
+            self.mqtt_fehler = "kein MQTT-Broker (HA-Entitäten werden nicht angelegt)"
             log.warning(self.mqtt_fehler)
         else:
             self.mqtt = mqtt_ha.MqttHA(zugang)
@@ -131,6 +136,22 @@ class Laufzeit:
             if time.monotonic() - naechster > 5 * ZYKLUS_S:
                 naechster = time.monotonic()   # nach Haenger nicht nachholen
 
+    async def _prognose_holen(self) -> None:
+        """PV-Prognose alle 15 min (sobald HA verbunden ist)."""
+        while True:
+            if self.ha and self.ha.verbunden:
+                try:
+                    antwort = await self.ha.anfrage({"type": "energy/solar_forecast"})
+                    self.prognose.setzen(antwort or {}, datetime.now(self.erfassung.tz))
+                    if self.prognose.fehler:
+                        log.info("PV-Prognose: %s", self.prognose.fehler)
+                    await asyncio.sleep(PROGNOSE_S)
+                    continue
+                except Exception as e:
+                    self.prognose.fehler = f"Abfrage fehlgeschlagen: {e}"
+                    log.warning("PV-Prognose: %s", e)
+            await asyncio.sleep(30)
+
     def _ausfuehren(self, aktionen: list[Aktion]) -> None:
         jetzt = datetime.now().strftime("%H:%M:%S")
         if self.konfig.trockenlauf or self.ha is None:
@@ -139,7 +160,7 @@ class Laufzeit:
             # Ereignis nur, wenn sich die geplanten Einstellungen aendern (nicht alle 30 s)
             texte = frozenset(akt.text for akt in aktionen if not akt.ids)
             if texte and texte != self._trocken_letzt:
-                db.ereignis("info", "stellglied", "wuerde schreiben: " + "; ".join(sorted(texte)))
+                db.ereignis("info", "stellglied", "würde schreiben: " + "; ".join(sorted(texte)))
             if texte:
                 self._trocken_letzt = texte
             return

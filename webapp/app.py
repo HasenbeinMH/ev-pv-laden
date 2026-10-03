@@ -95,3 +95,12 @@ async def api_parameter(request: Request):
     if fehler:
         return JSONResponse({"ok": False, "fehler": fehler}, status_code=422)
     return {"ok": True, "parameter": lz.regelung.param.als_dict()}
+
+
+@app.get("/api/prognose")
+def api_prognose(request: Request):
+    lz = request.app.state.lz
+    if not lz.erfassung:
+        return {"verfuegbar": False}
+    from datetime import datetime
+    return lz.prognose.uebersicht(datetime.now(lz.erfassung.tz))

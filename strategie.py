@@ -49,13 +49,13 @@ class Parameter:
         if not 0 <= self.akku_soc_schwelle <= 100:
             f.append("Akku-SoC-Schwelle muss zwischen 0 und 100 % liegen")
         if not 0 <= self.akku_unterstuetzung_soc <= 100:
-            f.append("SoC fuer Akku-Unterstuetzung muss zwischen 0 und 100 % liegen")
+            f.append("SoC für Akku-Unterstützung muss zwischen 0 und 100 % liegen")
         if not 0 <= self.akku_unterstuetzung_w <= 20000:
-            f.append("Akku-Unterstuetzung muss zwischen 0 und 20000 W liegen")
+            f.append("Akku-Unterstützung muss zwischen 0 und 20000 W liegen")
         if not 0 <= self.tau_s <= 600:
             f.append("Zeitkonstante muss zwischen 0 und 600 s liegen")
         if not 0 < self.stopp_w <= self.start_w:
-            f.append("Stopp-Schwelle muss groesser 0 und hoechstens die Start-Schwelle sein")
+            f.append("Stopp-Schwelle muss größer 0 und höchstens die Start-Schwelle sein")
         for name in ("start_verz_s", "stopp_verz_s", "min_ladedauer_s", "min_pause_s"):
             if not 0 <= getattr(self, name) <= 7200:
                 f.append(f"{name} muss zwischen 0 und 7200 s liegen")
@@ -187,8 +187,8 @@ class Strategie:
                 if not self.laedt:
                     self._starten(t)
                 return Ausgang(True, self.p_min, None, None, "laedt",
-                               "Messwerte ungueltig – nur Mindestleistung")
-            return self._aus(t, "Messwerte ungueltig oder veraltet – kein Ueberschuss")
+                               "Messwerte ungültig – nur Mindestleistung")
+            return self._aus(t, "Messwerte ungültig oder veraltet – kein Überschuss")
 
         glatt = self._pt1(t, roh)
 
@@ -196,7 +196,7 @@ class Strategie:
             if not self.laedt:
                 self._starten(t)
             erlaubt = self._begrenzen(glatt)
-            grund = "Min + PV: Mindestleistung" if glatt <= self.p_min else "Min + PV: Ueberschuss"
+            grund = "Min + PV: Mindestleistung" if glatt <= self.p_min else "Min + PV: Überschuss"
             return Ausgang(True, erlaubt, roh, glatt, "laedt", grund)
 
         # NUR_PV (und ZIELZEIT bis M7)
@@ -208,13 +208,13 @@ class Strategie:
                 if gewartet >= p.stopp_verz_s and gelaufen >= p.min_ladedauer_s:
                     self._stoppen(t)
                     return Ausgang(False, 0.0, roh, glatt, "pause",
-                                   f"gestoppt: Ueberschuss {glatt:.0f} W < {p.stopp_w:.0f} W")
+                                   f"gestoppt: Überschuss {glatt:.0f} W < {p.stopp_w:.0f} W")
                 rest = max(p.stopp_verz_s - gewartet, p.min_ladedauer_s - gelaufen)
                 return Ausgang(True, self._begrenzen(glatt), roh, glatt, "stoppt",
-                               f"Ueberschuss {glatt:.0f} W < {p.stopp_w:.0f} W – Stopp in {rest:.0f} s")
+                               f"Überschuss {glatt:.0f} W < {p.stopp_w:.0f} W – Stopp in {rest:.0f} s")
             self._seit_bedingung = None
             return Ausgang(True, self._begrenzen(glatt), roh, glatt, "laedt",
-                           f"PV-Ueberschuss {glatt:.0f} W")
+                           f"PV-Überschuss {glatt:.0f} W")
 
         # laedt nicht
         if self._pause_seit is not None and t - self._pause_seit < p.min_pause_s:
@@ -227,9 +227,9 @@ class Strategie:
             if gewartet >= p.start_verz_s:
                 self._starten(t)
                 return Ausgang(True, self._begrenzen(glatt), roh, glatt, "laedt",
-                               f"gestartet: Ueberschuss {glatt:.0f} W")
+                               f"gestartet: Überschuss {glatt:.0f} W")
             return Ausgang(False, 0.0, roh, glatt, "startet",
-                           f"Ueberschuss {glatt:.0f} W – Start in {p.start_verz_s - gewartet:.0f} s")
+                           f"Überschuss {glatt:.0f} W – Start in {p.start_verz_s - gewartet:.0f} s")
         self._seit_bedingung = None
         return Ausgang(False, 0.0, roh, glatt, "bereit",
-                       f"Ueberschuss {glatt:.0f} W < Start {p.start_w:.0f} W")
+                       f"Überschuss {glatt:.0f} W < Start {p.start_w:.0f} W")

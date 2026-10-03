@@ -50,7 +50,7 @@ class Regelung:
         try:
             p = Parameter.aus_dict({**self.param.als_dict(), **neu})
         except (TypeError, ValueError) as e:
-            return [f"ungueltiger Wert: {e}"]
+            return [f"ungültiger Wert: {e}"]
         fehler = p.pruefen()
         if fehler:
             return fehler
@@ -59,7 +59,7 @@ class Regelung:
         db.einstellung_setzen(PARAM_SCHLUESSEL, p.als_dict())
         geaendert = {k: v for k, v in p.als_dict().items() if alt.get(k) != v}
         if geaendert:
-            db.ereignis("info", "parameter", "geaendert: " +
+            db.ereignis("info", "parameter", "geändert: " +
                         ", ".join(f"{k}={v}" for k, v in geaendert.items()))
         return []
 

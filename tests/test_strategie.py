@@ -98,7 +98,7 @@ def test_watchdog_stoppt_sofort():
     s = strat(tau_s=0, start_verz_s=0, stopp_verz_s=180, min_ladedauer_s=600)
     s.schritt(e(0, netz=-5000))
     a = s.schritt(Eingang(1, 5000, None, 0, 95, True))
-    assert a.freigabe is False and "ungueltig" in a.grund
+    assert a.freigabe is False and "ungültig" in a.grund
 
 
 # --- Modi ----------------------------------------------------------------------------------

@@ -121,8 +121,8 @@ class Erfassung:
             self._sichern(tag)
         self.senden_noetig = True
         if buchung.art == "neu_angesetzt":
-            ebene = "info" if buchung.hinweis == "erster Zaehlerstand" else "warnung"
-            self._ereignis(ebene, "bilanz", f"Zaehler neu angesetzt: {buchung.hinweis}")
+            ebene = "info" if buchung.hinweis == "erster Zählerstand" else "warnung"
+            self._ereignis(ebene, "bilanz", f"Zähler neu angesetzt: {buchung.hinweis}")
         elif buchung.art == "ohne_aufteilung":
             self._ereignis("warnung", "bilanz",
                            f"{delta:.3f} kWh ohne Aufteilung als Netz gebucht ({buchung.hinweis})")
@@ -167,7 +167,7 @@ class Erfassung:
         self._ama_gemeldet = ama
         if ama > self.konfig.max_strom_a:
             self._ereignis("warnung", "ueberwachung",
-                           f"ama der Wallbox {ama:.0f} A liegt UEBER der Grenze {self.konfig.max_strom_a} A")
+                           f"ama der Wallbox {ama:.0f} A liegt ÜBER der Grenze {self.konfig.max_strom_a} A")
         elif ama < self.konfig.max_strom_a:
             self._ereignis("warnung", "ueberwachung",
                            f"ama der Wallbox {ama:.0f} A begrenzt unter {self.konfig.max_strom_a} A "

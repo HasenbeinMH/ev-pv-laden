@@ -135,7 +135,7 @@ class TreiberIds:
 
         # Nur PV / Min + PV / Zielzeit: go-e im Eco-Modus, Phasen automatisch
         aktionen += (self._select(t, werte, "lmo", "4", "Eco-Modus")
-                     + self._schalter(t, werte, "fup", True, "PV-Ueberschuss")
+                     + self._schalter(t, werte, "fup", True, "PV-Überschuss")
                      + self._select(t, werte, "frc", "0", "neutral")
                      + self._select(t, werte, "psm", "0", "Phasen automatisch")
                      # Abrunden statt aufrunden: nie eine Stromstufe ueber P_erlaubt
@@ -159,7 +159,7 @@ class TreiberIds:
         if max(stroeme) > grenze + UEBERSTROM_TOLERANZ_A:
             self._ueberstrom_seit = self._ueberstrom_seit if self._ueberstrom_seit is not None else t
             if t - self._ueberstrom_seit >= UEBERSTROM_S and not self.verriegelt:
-                self.verriegelt = (f"Strom {max(stroeme):.1f} A ueber Grenze {grenze} A "
+                self.verriegelt = (f"Strom {max(stroeme):.1f} A über Grenze {grenze} A "
                                    f"({phasen or '?'}-phasig) seit {UEBERSTROM_S:.0f} s")
                 self._nachgestellt.pop("frc", None)
         else:

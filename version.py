@@ -8,9 +8,20 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 CHANGELOG = [
+    {
+        "version": "0.5.0",
+        "datum": "2026-10-03",
+        "titel": "Neue Oberflaeche im eedc-Stil, Energiefluss, PV-Prognose",
+        "aenderungen": [
+            "Oberflaeche im Stil von eedc: Reiter Live/Bilanz/Ladevorgaenge/Diagnose, Kennzahl-Kacheln, Hell/Dunkel",
+            "Energiefluss: PV, Netz, Hausakku, Haus und Auto mit animierten Linien; Aufteilung PV/Akku/Netz unter dem Auto",
+            "PV-Prognose aus HA (Energie-Dashboard): Rest heute, morgen, Stundenwerte als Diagramm",
+            "Texte mit echten Umlauten",
+        ],
+    },
     {
         "version": "0.4.0",
         "datum": "2026-10-03",

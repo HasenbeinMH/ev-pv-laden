@@ -202,22 +202,27 @@ class HAClient:
                 else:
                     fut.set_exception(HAFehler(str(nachricht.get("error"))))
 
+    async def anfrage(self, befehl: dict) -> dict | list | None:
+        """Beliebiger WebSocket-Befehl, wartet auf das Ergebnis. Nur lesend verwenden –
+        Schreibendes laeuft ueber dienst_aufrufen (mit Trockenlauf-Sperre)."""
+        if not self._ws or not self.verbunden:
+            raise HAFehler("keine Verbindung zu Home Assistant")
+        nid = next(self._ids)
+        fut = asyncio.get_running_loop().create_future()
+        self._offen[nid] = fut
+        await self._ws.send_json({**befehl, "id": nid})
+        try:
+            return await asyncio.wait_for(fut, ANTWORT_TIMEOUT_S)
+        finally:
+            self._offen.pop(nid, None)
+
     async def dienst_aufrufen(self, domain: str, service: str, daten: dict | None = None,
                               ziel: dict | None = None) -> dict | None:
         """call_service ueber die bestehende Verbindung. Im Trockenlauf gesperrt."""
         if self.schreiben_gesperrt:
             raise SchreibschutzAktiv(f"{domain}.{service} im Trockenlauf nicht ausgefuehrt")
-        if not self._ws or not self.verbunden:
-            raise HAFehler("keine Verbindung zu Home Assistant")
-        nid = next(self._ids)
-        befehl = {"id": nid, "type": "call_service", "domain": domain, "service": service,
+        befehl = {"type": "call_service", "domain": domain, "service": service,
                   "service_data": daten or {}}
         if ziel:
             befehl["target"] = ziel
-        fut = asyncio.get_running_loop().create_future()
-        self._offen[nid] = fut
-        await self._ws.send_json(befehl)
-        try:
-            return await asyncio.wait_for(fut, ANTWORT_TIMEOUT_S)
-        finally:
-            self._offen.pop(nid, None)
+        return await self.anfrage(befehl)
