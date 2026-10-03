@@ -45,6 +45,10 @@
       <span id="param-meldung" class="klein"></span></div>
   </details>
 
+  <h3>Stellglied <span id="verriegelt" class="schlecht"></span></h3>
+  <p class="hinweis">Was der Treiber auf die go-e schreibt – im Trockenlauf nur, was er schreiben würde.</p>
+  <div class="tabelle-rahmen tabelle-hoch"><table><tbody id="aktionen"></tbody></table></div>
+
   <h2>Bilanz</h2>
   <section class="karten">
     <div class="karte"><div class="titel">Jetzt ins Auto</div><div id="live" class="wert">…</div></div>
@@ -118,6 +122,13 @@ async function aktualisieren() {
     document.getElementById("mqtt").innerHTML = s.mqtt.verbunden
       ? '<span class="ok">verbunden</span>'
       : '<span class="schlecht">getrennt</span> ' + esc(s.mqtt.fehler || "");
+    if (s.treiber) {
+      document.getElementById("verriegelt").textContent = s.treiber.verriegelt ? "VERRIEGELT: " + s.treiber.verriegelt : "";
+      document.getElementById("aktionen").innerHTML = s.treiber.aktionen.map(([z, t, e]) =>
+        `<tr><td class="klein">${esc(z)}</td><td class="mono">${esc(t)}</td>
+         <td class="${e === "ok" ? "ok" : e === "Trockenlauf" ? "klein" : "schlecht"}">${esc(e)}</td></tr>`).join("")
+        || '<tr><td class="klein">noch keine Aktionen</td></tr>';
+    }
     const g = s.grenzen;
     document.getElementById("grenzen").textContent = g
       ? `${g.min_strom_a}–${g.max_strom_a} A · 1-phasig ≤ ${g.strom_1ph_max_a} A · Alter ≤ ${g.max_alter_s} s` : "–";

@@ -5,7 +5,7 @@
 # Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
 # Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
 name: EV PV-Laden
-version: "0.3.0"
+version: "0.4.0"
 slug: ev_pv_laden
 description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
 url: "https://github.com/HasenbeinMH/ev-pv-laden"
@@ -40,6 +40,8 @@ options:
   max_alter_s: 15
   # go-eCharger (Integration goecharger_api2): Seriennummer aus den Entity-IDs goe_XXXXXX_...
   goe_seriennummer: "325656"
+  # Treiber ids: echte PV-Leistung als pPv mitsenden (sonst 0)
+  ids_ppv_senden: true
   # Elektrische Grenzen – werden nie ueberschritten
   max_strom_a: 24
   max_strom_1ph_a: 20
@@ -64,6 +66,7 @@ schema:
   sensor_lebenszeichen: match(^(sensor\.[a-z0-9_]+)?$)
   max_alter_s: int(5,300)
   goe_seriennummer: match(^[0-9]+$)
+  ids_ppv_senden: bool
   # Obergrenzen bewusst im Schema begrenzt: 24 A Zuleitung, 20 A Schieflast (VDE-AR-N 4100)
   max_strom_a: int(6,24)
   max_strom_1ph_a: int(6,20)

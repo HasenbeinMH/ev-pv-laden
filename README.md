@@ -5,9 +5,10 @@ Integration [go-e APIv2 Connect](https://github.com/marq24/ha-goecharger-api2)) 
 Hausakku-Priorität. Bilanziert genau, wie viel kWh aus PV, Hausakku und Netz ins Auto
 gingen, und meldet jede Ladung an den [EV Tracker](https://github.com/HasenbeinMH/ev-tracker-ha).
 
-> **Status: in Entwicklung (0.3.0 – Strategie im Trockenlauf).** Das Add-on liest Messwerte,
-> bilanziert PV/Akku/Netz, rechnet die erlaubte Ladeleistung und zeigt die Entscheidungen –
-> schreibt aber noch nichts auf die Wallbox.
+> **Status: in Entwicklung (0.4.0 – Treiber ids).** Das Add-on bilanziert PV/Akku/Netz, rechnet
+> die erlaubte Ladeleistung und kann sie über die go-e umsetzen. Standard ist der
+> **Trockenlauf**: es zeigt nur, was es schreiben würde. Scharfschalten erst nach
+> [docs/M5_Inbetriebnahme.md](docs/M5_Inbetriebnahme.md).
 
 ## Prinzip
 

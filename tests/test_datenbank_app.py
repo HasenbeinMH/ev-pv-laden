@@ -38,7 +38,7 @@ def test_app_startet_ohne_ha_und_zeigt_status():
         quellen = {e["quelle"] for e in c.get("/api/ereignisse").json()["ereignisse"]}
         assert "start" in quellen
         r = c.get("/api/regelung").json()
-        assert r["treiber"] == "keiner (Trockenlauf)" and r["modus"] == "nur_pv"
+        assert r["treiber"] == "ids (Trockenlauf)" and r["modus"] == "nur_pv"
         assert c.post("/api/parameter", json={"stopp_w": 5000}).status_code == 422
         assert c.post("/api/parameter", json={"modus": "min_pv"}).json()["parameter"]["modus"] == "min_pv"
         assert c.get("/api/regelung").json()["modus"] == "min_pv"

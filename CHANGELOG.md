@@ -3,6 +3,18 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.4.0] - 2026-10-03
+
+Treiber „ids“ – **kann jetzt auf die Wallbox schreiben, aber nur mit `trockenlauf: false`.**
+Standard bleibt der Trockenlauf; die Oberfläche zeigt unter „Stellglied“, was geschrieben würde.
+Vor dem Scharfschalten: `docs/M5_Inbetriebnahme.md`.
+
+- Treiber ids: go-e im Eco-Modus, das Add-on sendet alle 2 s einen virtuellen Netzwert (pGrid = P_auto − P_erlaubt)
+- Sollkonfiguration der go-e (lmo, fup, frc, psm, frm, amp) wird überwacht und bei Abweichung nachgestellt
+- Sofort: fest dreiphasig mit Maximalstrom; Aus: Laden gesperrt
+- Harte Grenzen: amp einphasig begrenzt (Schieflast/Fahrzeug), Überstrom → Laden gesperrt und verriegelt
+- Neue Option `ids_ppv_senden` (echte PV-Leistung als pPv oder 0)
+
 ## [0.3.0] - 2026-10-03
 
 Strategie im Trockenlauf – rechnet und zeigt, schreibt aber nichts auf die Wallbox.

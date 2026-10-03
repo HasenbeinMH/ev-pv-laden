@@ -8,9 +8,21 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 CHANGELOG = [
+    {
+        "version": "0.4.0",
+        "datum": "2026-10-03",
+        "titel": "Treiber ids",
+        "aenderungen": [
+            "Treiber ids: go-e im Eco-Modus, das Add-on sendet alle 2 s einen virtuellen Netzwert (pGrid = P_auto - P_erlaubt)",
+            "Sollkonfiguration der go-e (lmo, fup, frc, psm, frm, amp) wird ueberwacht und bei Abweichung nachgestellt",
+            "Sofort: fest dreiphasig mit Maximalstrom; Aus: Laden gesperrt",
+            "Harte Grenzen: amp einphasig begrenzt (Schieflast/Fahrzeug), Ueberstrom -> Laden gesperrt und verriegelt",
+            "Trockenlauf zeigt, was geschrieben wuerde; geschrieben wird nur mit trockenlauf: false",
+        ],
+    },
     {
         "version": "0.3.0",
         "datum": "2026-10-03",

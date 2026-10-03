@@ -2,12 +2,16 @@
 """
 Laufzeit: alles, was zwischen Start und Stopp des Add-ons lebt.
 Konfiguration -> Protokoll -> Datenbank -> Prozessabbild -> HA-Verbindung ->
-Zyklus (1 s): Erfassung/Bilanz + Regelung (Trockenlauf) -> MQTT.
+Zyklus (1 s): Erfassung/Bilanz -> Regelung (Strategie) -> Treiber (Aktionen) -> MQTT.
+Die Aktionen des Treibers werden im Trockenlauf nur protokolliert, sonst asynchron ueber
+Home Assistant ausgefuehrt (der Zyklus wartet nicht auf die Antwort).
 """
 import asyncio
 import logging
 import os
 import time
+from collections import deque
+from datetime import datetime
 
 import datenbank as db
 import konfig as konfig_mod
@@ -17,6 +21,7 @@ from erfassung import Erfassung
 from ha_client import IST_ADDON, HAClient, verbindung_aus_umgebung
 from prozessabbild import Prozessabbild
 from regelung import Regelung
+from treiber import Aktion, TreiberIds
 from version import VERSION
 
 log = logging.getLogger("app")
@@ -38,6 +43,11 @@ class Laufzeit:
         self.gestartet = time.time()
         self.zyklus_fehler: str | None = None
         self.simulator = None
+        self.treiber: TreiberIds | None = None
+        # Letzte Aktionen des Treibers fuer die Oberflaeche: (Zeit, Text, Ergebnis)
+        self.aktionen: deque = deque(maxlen=60)
+        self._trocken_letzt: frozenset = frozenset()
+        self._ids_fehler = 0
         self._tasks: list[asyncio.Task] = []
 
     async def starten(self) -> None:
@@ -61,6 +71,8 @@ class Laufzeit:
         self.abbild = Prozessabbild(self.konfig)
         self.erfassung = Erfassung(self.konfig, self.abbild)
         self.regelung = Regelung(self.konfig, self.abbild)
+        self.treiber = TreiberIds(self.konfig, self.konfig.ids_ppv_senden)
+        self.regelung.treiber = f"ids{' (Trockenlauf)' if self.konfig.trockenlauf else ''}"
         self._tasks.append(asyncio.create_task(self._zyklus(), name="zyklus"))
 
         daten = verbindung_aus_umgebung()
@@ -75,8 +87,8 @@ class Laufzeit:
             log.error(self.ha_fehler)
         else:
             self.ha = HAClient(daten, self.abbild.entity_ids, self.abbild.aktualisieren)
-            # Bis M5 gibt es keinen Schreibpfad – Sperre unabhaengig vom Trockenlauf gesetzt
-            self.ha.schreiben_gesperrt = True
+            # Verriegelung direkt im Client: im Trockenlauf geht kein Dienstaufruf raus
+            self.ha.schreiben_gesperrt = self.konfig.trockenlauf
             self._tasks.append(asyncio.create_task(self.ha.laufen(), name="ha_client"))
 
         zugang = await mqtt_ha.zugang_holen()
@@ -101,6 +113,10 @@ class Laufzeit:
                 a = self.regelung.zyklus()
                 if vorher is None or (vorher.freigabe, vorher.zustand) != (a.freigabe, a.zustand):
                     self.erfassung.senden_noetig = True
+                mono = time.monotonic()
+                werte = {n: self.abbild.wert(n, mono) for n in self.abbild.werte}
+                self._ausfuehren(self.treiber.zyklus(mono, self.regelung.param.modus, a,
+                                                     self.regelung.pgrid_v, werte))
                 if self.erfassung.senden_noetig and self.mqtt:
                     self.mqtt.zustand_setzen({**self.erfassung.mqtt_zustand(),
                                               **self.regelung.mqtt_zustand()})
@@ -114,6 +130,43 @@ class Laufzeit:
             await asyncio.sleep(max(naechster - time.monotonic(), 0))
             if time.monotonic() - naechster > 5 * ZYKLUS_S:
                 naechster = time.monotonic()   # nach Haenger nicht nachholen
+
+    def _ausfuehren(self, aktionen: list[Aktion]) -> None:
+        jetzt = datetime.now().strftime("%H:%M:%S")
+        if self.konfig.trockenlauf or self.ha is None:
+            for akt in aktionen:
+                self.aktionen.append((jetzt, akt.text, "Trockenlauf"))
+            # Ereignis nur, wenn sich die geplanten Einstellungen aendern (nicht alle 30 s)
+            texte = frozenset(akt.text for akt in aktionen if not akt.ids)
+            if texte and texte != self._trocken_letzt:
+                db.ereignis("info", "stellglied", "wuerde schreiben: " + "; ".join(sorted(texte)))
+            if texte:
+                self._trocken_letzt = texte
+            return
+        for akt in aktionen:
+            asyncio.create_task(self._aufrufen(akt))
+
+    async def _aufrufen(self, akt: Aktion) -> None:
+        jetzt = datetime.now().strftime("%H:%M:%S")
+        try:
+            await self.ha.dienst_aufrufen(akt.domain, akt.service, akt.daten, akt.ziel)
+            self.aktionen.append((jetzt, akt.text, "ok"))
+            if akt.ids:
+                if self._ids_fehler >= 3:
+                    db.ereignis("info", "stellglied", "ids wird wieder angenommen")
+                self._ids_fehler = 0
+            else:
+                db.ereignis("info", "stellglied", f"geschrieben: {akt.text}")
+        except Exception as e:
+            self.aktionen.append((jetzt, akt.text, f"Fehler: {e}"))
+            if akt.ids:
+                self._ids_fehler += 1
+                if self._ids_fehler == 3:
+                    log.warning("ids dreimal nicht gesendet: %s", e)
+                    db.ereignis("warnung", "stellglied", f"ids wird nicht gesendet: {e}")
+            else:
+                log.warning("Schreiben fehlgeschlagen (%s): %s", akt.text, e)
+                db.ereignis("warnung", "stellglied", f"nicht geschrieben: {akt.text} – {e}")
 
     async def stoppen(self) -> None:
         for t in reversed(self._tasks):
@@ -149,5 +202,8 @@ class Laufzeit:
                 "fehler": self.mqtt_fehler or (self.mqtt.letzter_fehler if self.mqtt else None),
             },
             "zyklus_fehler": self.zyklus_fehler,
+            "treiber": None if not self.treiber else {
+                "name": self.treiber.name, "verriegelt": self.treiber.verriegelt,
+                "aktionen": list(self.aktionen)[::-1][:30]},
             "signale": self.abbild.uebersicht() if self.abbild else [],
         }

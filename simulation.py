@@ -162,6 +162,10 @@ class LiveSimulator:
              f"sensor.{g}_eto": z(round(self.eto, 3), "kWh"),
              f"binary_sensor.{g}_car_0": z("on"),
              f"number.{g}_ama": z(k.max_strom_a, "A")}
+        dreiphasig = p_auto > self.wb.umschalt_w
+        strom = p_auto / (3 * U) if dreiphasig else p_auto / U
+        for n in (1, 2, 3):
+            w[f"sensor.{g}_nrg_{n + 3}"] = z(round(strom if (dreiphasig or n == 1) else 0.0, 1), "A")
         if k.sensor_pv:
             w[k.sensor_pv] = z(round(self.ueberschuss(t) + 600), "W")
         for eid, zustand in w.items():

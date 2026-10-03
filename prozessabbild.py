@@ -85,6 +85,7 @@ def signale(k: Konfig) -> list[Signal]:
         goe("goe_frc", f"select.{g}_frc", TEXT, "go-e Force State (frc)", pflicht=False),
         goe("goe_psm", f"select.{g}_psm", TEXT, "go-e Phasenmodus (psm)", pflicht=False),
         goe("goe_fup", f"switch.{g}_fup", BINAER, "go-e PV-Ueberschuss (fup)", pflicht=False),
+        goe("goe_frm", f"select.{g}_frm", TEXT, "go-e Rundungsmodus (frm)", pflicht=False),
         goe("goe_pgrid", f"sensor.{g}_pgrid", LEISTUNG, "go-e empfangenes pGrid", pflicht=False),
         goe("goe_inva", f"sensor.{g}_inva_delta", ZAHL, "go-e Alter Inverterdaten", pflicht=False),
     ]

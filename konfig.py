@@ -45,6 +45,8 @@ class Konfig:
     sensor_lebenszeichen: str = ""
     max_alter_s: int = 15
     goe_seriennummer: str = ""
+    # Treiber ids: echte PV-Leistung als pPv mitsenden (sonst 0) – Wirkung wird getestet
+    ids_ppv_senden: bool = True
     max_strom_a: int = GRENZE_STROM_A
     max_strom_1ph_a: int = GRENZE_STROM_1PH_A
     ev_max_strom_1ph_a: int = 16
