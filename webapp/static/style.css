@@ -1,0 +1,39 @@
+:root {
+  --hg: #f6f7f9; --karte: #ffffff; --text: #1d232b; --leise: #5c6773; --linie: #dde1e6;
+  --ok: #1a7f37; --schlecht: #c62828; --warnung: #b35c00; --akzent: #2563eb;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --hg: #111418; --karte: #1a1f25; --text: #e6e9ed; --leise: #98a2ad; --linie: #2c333b;
+    --ok: #4ac26b; --schlecht: #ff6b6b; --warnung: #f0a04b; --akzent: #6ea8ff;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--hg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: var(--karte); border-bottom: 1px solid var(--linie); }
+h1 { font-size: 1.2rem; margin: 0; }
+h2 { font-size: 1.05rem; margin: 24px 0 8px; }
+main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+.version { color: var(--leise); font-size: .85rem; }
+.marke { margin-left: auto; padding: 2px 10px; border-radius: 999px; font-weight: 600;
+  font-size: .85rem; border: 1px solid currentColor; }
+.karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.karte { background: var(--karte); border: 1px solid var(--linie); border-radius: 8px; padding: 12px; }
+.karte .titel { color: var(--leise); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+.karte .wert { margin-top: 4px; }
+.fehler { margin-top: 12px; padding: 10px 12px; border-radius: 8px; color: var(--schlecht);
+  border: 1px solid var(--schlecht); background: var(--karte); }
+.hinweis { color: var(--leise); font-size: .85rem; margin: 0 0 8px; }
+.tabelle-rahmen { overflow-x: auto; background: var(--karte); border: 1px solid var(--linie); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--linie); text-align: left; white-space: nowrap; }
+th { color: var(--leise); font-weight: 600; font-size: .8rem; }
+tr:last-child td { border-bottom: none; }
+.zahl { text-align: right; font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: .85rem; }
+.klein { color: var(--leise); font-size: .8rem; }
+.ok { color: var(--ok); } .schlecht { color: var(--schlecht); } .warnung { color: var(--warnung); }
+.protokoll { background: var(--karte); border: 1px solid var(--linie); border-radius: 8px; padding: 10px;
+  max-height: 320px; overflow: auto; font: 12px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; }

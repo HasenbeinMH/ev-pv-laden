@@ -1,0 +1,5 @@
+# Shell-Skripte, Docker- und YAML-Dateien immer mit LF auschecken (laufen auf Linux)
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

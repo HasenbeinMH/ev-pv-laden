@@ -1,0 +1,20 @@
+# Datenbank, Optionen & Logs – koennen Token enthalten, NIE committen!
+*.db
+*.db-wal
+*.db-shm
+*.log
+options.json
+dev/data/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Windows/Editor
+Thumbs.db
+desktop.ini
+*.tmp.*
+
+# Claude-Code-Sitzungsdaten
+.claude/

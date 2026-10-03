@@ -1,0 +1,72 @@
+# Home-Assistant-Add-on (Dockerfile im selben Ordner).
+# version: muss synchron zu version.py VERSION gehalten werden (siehe dort).
+#
+# Hier steht nur, was zur Anlage gehoert (Sensoren, elektrische Grenzen, Auto).
+# Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
+# Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
+name: EV PV-Laden
+version: "0.1.0"
+slug: ev_pv_laden
+description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
+url: "https://github.com/HasenbeinMH/ev-pv-laden"
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:ev-station
+homeassistant_api: true
+watchdog: "tcp://[HOST]:[PORT:8099]"
+options:
+  # Pflicht vor jedem Live-Betrieb: liest und rechnet, schreibt aber nichts auf die Wallbox
+  trockenlauf: true
+  log_level: info
+  # Messwerte (interne Konvention: Netzbezug +, Einspeisung -, Akku-Entladung +, Akku-Ladung -)
+  sensor_netz: sensor.se_modbus_daten_m1_ac_power
+  sensor_netz_invertieren: true
+  sensor_akku_leistung: sensor.se_modbus_daten_battery1_power
+  sensor_akku_leistung_invertieren: true
+  sensor_akku_soc: sensor.se_modbus_daten_battery1_state_of_charge
+  sensor_pv: sensor.nodered_338b35fcb1bd7ed8_2
+  # Schreibt das Messgeraet nur bei Wertaenderung (SolarEdge-Akku), zeigt dieser Sensor,
+  # dass die Abfrage noch laeuft (Lebensbit des ganzen Geraets)
+  sensor_lebenszeichen: sensor.se_modbus_daten_m1_ac_power
+  max_alter_s: 15
+  # go-eCharger (Integration goecharger_api2): Seriennummer aus den Entity-IDs goe_XXXXXX_...
+  goe_seriennummer: "325656"
+  # Elektrische Grenzen – werden nie ueberschritten
+  max_strom_a: 24
+  max_strom_1ph_a: 20
+  ev_max_strom_1ph_a: 16
+  min_strom_a: 6
+  # Auto
+  akku_kapazitaet_kwh: 58.3
+  ladewirkungsgrad: 0.9
+  # EV Tracker (optional): Adresse und Token aus EV Tracker -> Einstellungen
+  ev_tracker_url: ""
+  ev_tracker_token: ""
+  akku_als_netz: false
+schema:
+  trockenlauf: bool
+  log_level: list(debug|info|warning|error)
+  sensor_netz: match(^sensor\.[a-z0-9_]+$)
+  sensor_netz_invertieren: bool
+  sensor_akku_leistung: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_akku_leistung_invertieren: bool
+  sensor_akku_soc: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_pv: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_lebenszeichen: match(^(sensor\.[a-z0-9_]+)?$)
+  max_alter_s: int(5,300)
+  goe_seriennummer: match(^[0-9]+$)
+  # Obergrenzen bewusst im Schema begrenzt: 24 A Zuleitung, 20 A Schieflast (VDE-AR-N 4100)
+  max_strom_a: int(6,24)
+  max_strom_1ph_a: int(6,20)
+  ev_max_strom_1ph_a: int(6,32)
+  min_strom_a: int(6,16)
+  akku_kapazitaet_kwh: float(10,200)
+  ladewirkungsgrad: float(0.5,1)
+  ev_tracker_url: str
+  ev_tracker_token: password
+  akku_als_netz: bool

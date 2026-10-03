@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+*.log
+dev/
+tests/
+docs/
+.git/
+.claude/
+.dockerignore

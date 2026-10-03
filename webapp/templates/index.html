@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EV PV-Laden</title>
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+<header>
+  <h1>EV PV-Laden</h1>
+  <span class="version">{{ version }}</span>
+  <span id="trockenlauf" class="marke">…</span>
+</header>
+
+<main>
+  <section class="karten">
+    <div class="karte"><div class="titel">Konfiguration</div><div id="konfig" class="wert">…</div></div>
+    <div class="karte"><div class="titel">Home Assistant</div><div id="ha" class="wert">…</div></div>
+    <div class="karte"><div class="titel">Grenzen</div><div id="grenzen" class="wert">…</div></div>
+  </section>
+
+  <section id="konfig-fehler" class="fehler" hidden></section>
+
+  <h2>Messwerte (Prozessabbild)</h2>
+  <p class="hinweis">Interne Konvention: Netzbezug +, Einspeisung −, Akku-Entladung +, Akku-Ladung −.
+    Ungültig = kein Wert oder älter als die konfigurierte Grenze.</p>
+  <div class="tabelle-rahmen">
+    <table>
+      <thead><tr><th>Signal</th><th>Entity</th><th class="zahl">Wert</th><th>Roh</th><th class="zahl">Alter</th><th>Status</th></tr></thead>
+      <tbody id="signale"></tbody>
+    </table>
+  </div>
+
+  <h2>Protokoll</h2>
+  <pre id="protokoll" class="protokoll"></pre>
+</main>
+
+<script>
+const fmt = (v, art) => {
+  if (v === null || v === undefined) return "–";
+  if (typeof v === "boolean") return v ? "ja" : "nein";
+  if (typeof v !== "number") return String(v);
+  if (art === "leistung") return Math.round(v).toLocaleString("de-DE") + " W";
+  if (art === "energie") return v.toLocaleString("de-DE", {maximumFractionDigits: 3}) + " kWh";
+  if (art === "prozent") return v.toLocaleString("de-DE", {maximumFractionDigits: 1}) + " %";
+  if (art === "strom") return v.toLocaleString("de-DE", {maximumFractionDigits: 1}) + " A";
+  return v.toLocaleString("de-DE");
+};
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function aktualisieren() {
+  try {
+    const s = await (await fetch("api/status")).json();
+    const tl = document.getElementById("trockenlauf");
+    tl.textContent = s.trockenlauf ? "Trockenlauf" : "LIVE";
+    tl.className = "marke " + (s.trockenlauf ? "ok" : "warnung");
+    document.getElementById("konfig").innerHTML = s.konfig_ok
+      ? '<span class="ok">in Ordnung</span>' : '<span class="schlecht">fehlerhaft</span>';
+    const fe = document.getElementById("konfig-fehler");
+    fe.hidden = s.konfig_ok;
+    fe.innerHTML = s.konfig_fehler.map(f => "<div>" + esc(f) + "</div>").join("");
+    document.getElementById("ha").innerHTML = s.ha.verbunden
+      ? '<span class="ok">verbunden</span> ' + esc(s.ha.version || "")
+      : '<span class="schlecht">getrennt</span> ' + esc(s.ha.fehler || "");
+    const g = s.grenzen;
+    document.getElementById("grenzen").textContent = g
+      ? `${g.min_strom_a}–${g.max_strom_a} A · 1-phasig ≤ ${g.strom_1ph_max_a} A · Alter ≤ ${g.max_alter_s} s` : "–";
+    document.getElementById("signale").innerHTML = s.signale.map(z => {
+      const st = z.gueltig ? '<span class="ok">gültig</span>'
+        : !z.empfangen ? '<span class="schlecht">' + (z.pflicht ? "fehlt" : "fehlt (optional)") + "</span>"
+        : '<span class="schlecht">ungültig</span>';
+      return `<tr><td>${esc(z.beschreibung)}${z.invertiert ? ' <span class="klein">(invertiert)</span>' : ""}</td>
+        <td class="mono">${esc(z.entity_id)}</td><td class="zahl">${fmt(z.wert, z.art)}</td>
+        <td class="mono klein">${esc(z.roh)} ${esc(z.einheit || "")}</td>
+        <td class="zahl">${z.alter_s === null ? "–" : z.alter_s.toLocaleString("de-DE") + " s"}</td><td>${st}</td></tr>`;
+    }).join("");
+  } catch (e) { /* Add-on startet gerade neu */ }
+}
+async function protokoll() {
+  try {
+    const p = await (await fetch("api/protokoll?zeilen=80")).json();
+    const el = document.getElementById("protokoll");
+    el.textContent = p.zeilen.join("\n");
+    el.scrollTop = el.scrollHeight;
+  } catch (e) {}
+}
+aktualisieren(); protokoll();
+setInterval(aktualisieren, 2000);
+setInterval(protokoll, 10000);
+</script>
+</body>
+</html>
