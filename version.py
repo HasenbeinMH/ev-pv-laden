@@ -8,9 +8,15 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.5.0"
+VERSION = "0.5.1"
 
 CHANGELOG = [
+    {
+        "version": "0.5.1",
+        "datum": "2026-10-03",
+        "titel": "Icon und Logo",
+        "aenderungen": ["Icon und Logo fuer den Add-on-Store, Symbol auch in der Oberflaeche"],
+    },
     {
         "version": "0.5.0",
         "datum": "2026-10-03",

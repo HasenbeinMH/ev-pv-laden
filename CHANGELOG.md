@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.5.1] - 2026-10-03
+
+- Icon und Logo für den Add-on-Store, Symbol auch oben links in der Oberfläche
+
 ## [0.5.0] - 2026-10-03
 
 Neue Oberfläche im Stil von [eedc](https://github.com/supernova1963/eedc-homeassistant).

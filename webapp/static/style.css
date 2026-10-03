@@ -42,6 +42,7 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .logo-box { width: 36px; height: 36px; border-radius: 10px; border: 2px solid #14b8a6; color: #0d9488;
   display: grid; place-items: center; }
 .logo-box svg.i { width: 20px; height: 20px; }
+.logo-bild { width: 36px; height: 36px; display: block; }
 .marke { font-size: .72rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
 .marke.trocken { background: #fef3c7; color: #92400e; }
 .marke.live { background: #fee2e2; color: #991b1b; }
