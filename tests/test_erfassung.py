@@ -8,6 +8,7 @@ import mqtt_ha
 from erfassung import Erfassung
 from konfig import Konfig
 from prozessabbild import Prozessabbild
+from regelung import Regelung
 
 K = Konfig(goe_seriennummer="325656", sensor_lebenszeichen="sensor.se_modbus_daten_m1_ac_power")
 G = "325656"
@@ -110,8 +111,10 @@ def test_ama_warnung(frische_db):
 
 
 def test_mqtt_zustand_passt_zur_discovery(frische_db):
-    erf = Erfassung(K, Prozessabbild(K))
-    zustand = erf.mqtt_zustand()
+    pa = Prozessabbild(K)
+    erf, reg = Erfassung(K, pa), Regelung(K, pa)
+    reg.zyklus()
+    zustand = {**erf.mqtt_zustand(), **reg.mqtt_zustand()}
     nutzlast = mqtt_ha.discovery_nutzlast()
     for name, komp in nutzlast["components"].items():
         assert komp["unique_id"].startswith("ev_pv_laden_")

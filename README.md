@@ -5,8 +5,9 @@ Integration [go-e APIv2 Connect](https://github.com/marq24/ha-goecharger-api2)) 
 Hausakku-Priorität. Bilanziert genau, wie viel kWh aus PV, Hausakku und Netz ins Auto
 gingen, und meldet jede Ladung an den [EV Tracker](https://github.com/HasenbeinMH/ev-tracker-ha).
 
-> **Status: in Entwicklung (0.2.0 – Bilanz).** Das Add-on liest Messwerte, bilanziert PV/Akku/Netz
-> und legt die Zähler als HA-Entitäten an (MQTT), schreibt aber noch nichts auf die Wallbox.
+> **Status: in Entwicklung (0.3.0 – Strategie im Trockenlauf).** Das Add-on liest Messwerte,
+> bilanziert PV/Akku/Netz, rechnet die erlaubte Ladeleistung und zeigt die Entscheidungen –
+> schreibt aber noch nichts auf die Wallbox.
 
 ## Prinzip
 
@@ -38,3 +39,9 @@ python dev/start.py
 
 `dev/start.py` startet die Oberfläche auf http://127.0.0.1:8099 mit Daten in `dev/data`.
 Für echte Messwerte vorher `HA_URL` und `HA_TOKEN` (Long-Lived Access Token) setzen.
+`python dev/start.py --simulation` läuft ohne HA mit einem Anlagenmodell (Sonne, Wolken,
+Hausakku, Auto).
+
+Aufgezeichnete Tage als Testdaten: `python dev/export_ha.py 2026-10-01 10:00 16:00`
+(braucht `HA_URL`/`HA_TOKEN`) legt eine CSV in `tests/daten/` ab; `pytest` spielt sie mit
+der Strategie und dem Anlagenmodell nach.

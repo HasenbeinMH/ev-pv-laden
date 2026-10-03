@@ -11,7 +11,7 @@ import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -64,3 +64,34 @@ def api_ereignisse(request: Request, anzahl: int = 100):
 def api_bilanz(request: Request):
     lz = request.app.state.lz
     return lz.erfassung.uebersicht() if lz.erfassung else {}
+
+
+@app.get("/api/regelung")
+def api_regelung(request: Request):
+    lz = request.app.state.lz
+    return lz.regelung.status() if lz.regelung else {}
+
+
+@app.get("/api/verlauf")
+def api_verlauf(request: Request, sekunden: int = 1800, schritt: int = 2):
+    lz = request.app.state.lz
+    if not lz.regelung:
+        return {"spalten": [], "daten": []}
+    return lz.regelung.verlauf_liste(min(max(sekunden, 10), 3600), min(max(schritt, 1), 60))
+
+
+@app.post("/api/parameter")
+async def api_parameter(request: Request):
+    lz = request.app.state.lz
+    if not lz.regelung:
+        return JSONResponse({"ok": False, "fehler": ["Regelung nicht aktiv"]}, status_code=409)
+    try:
+        neu = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "fehler": ["kein gueltiges JSON"]}, status_code=400)
+    if not isinstance(neu, dict):
+        return JSONResponse({"ok": False, "fehler": ["JSON-Objekt erwartet"]}, status_code=400)
+    fehler = lz.regelung.parameter_setzen(neu)
+    if fehler:
+        return JSONResponse({"ok": False, "fehler": fehler}, status_code=422)
+    return {"ok": True, "parameter": lz.regelung.param.als_dict()}

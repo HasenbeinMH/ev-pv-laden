@@ -2,10 +2,11 @@
 """
 Laufzeit: alles, was zwischen Start und Stopp des Add-ons lebt.
 Konfiguration -> Protokoll -> Datenbank -> Prozessabbild -> HA-Verbindung ->
-Erfassungszyklus (1 s) -> MQTT.
+Zyklus (1 s): Erfassung/Bilanz + Regelung (Trockenlauf) -> MQTT.
 """
 import asyncio
 import logging
+import os
 import time
 
 import datenbank as db
@@ -15,6 +16,7 @@ import protokoll
 from erfassung import Erfassung
 from ha_client import IST_ADDON, HAClient, verbindung_aus_umgebung
 from prozessabbild import Prozessabbild
+from regelung import Regelung
 from version import VERSION
 
 log = logging.getLogger("app")
@@ -30,10 +32,12 @@ class Laufzeit:
         self.ha: HAClient | None = None
         self.ha_fehler: str | None = None
         self.erfassung: Erfassung | None = None
+        self.regelung: Regelung | None = None
         self.mqtt: mqtt_ha.MqttHA | None = None
         self.mqtt_fehler: str | None = None
         self.gestartet = time.time()
         self.zyklus_fehler: str | None = None
+        self.simulator = None
         self._tasks: list[asyncio.Task] = []
 
     async def starten(self) -> None:
@@ -56,10 +60,17 @@ class Laufzeit:
 
         self.abbild = Prozessabbild(self.konfig)
         self.erfassung = Erfassung(self.konfig, self.abbild)
+        self.regelung = Regelung(self.konfig, self.abbild)
         self._tasks.append(asyncio.create_task(self._zyklus(), name="zyklus"))
 
         daten = verbindung_aus_umgebung()
-        if daten is None:
+        if os.environ.get("EVPV_SIMULATION") and not IST_ADDON:
+            # Nur Entwicklung: Anlagenmodell statt Home Assistant
+            from simulation import LiveSimulator
+            self.simulator = LiveSimulator(self.konfig, self.abbild, self.regelung)
+            self.ha_fehler = "Simulation (EVPV_SIMULATION) – keine Verbindung zu Home Assistant"
+            log.warning(self.ha_fehler)
+        elif daten is None:
             self.ha_fehler = "Keine Verbindungsdaten (SUPERVISOR_TOKEN bzw. HA_URL/HA_TOKEN fehlen)"
             log.error(self.ha_fehler)
         else:
@@ -81,11 +92,18 @@ class Laufzeit:
         naechster = time.monotonic()
         while True:
             try:
+                if self.simulator:
+                    self.simulator.schritt(time.monotonic())
                 if self.ha and self.ha.zeitzone:
                     self.erfassung.zeitzone_setzen(self.ha.zeitzone)
                 self.erfassung.zyklus()
+                vorher = self.regelung.aus
+                a = self.regelung.zyklus()
+                if vorher is None or (vorher.freigabe, vorher.zustand) != (a.freigabe, a.zustand):
+                    self.erfassung.senden_noetig = True
                 if self.erfassung.senden_noetig and self.mqtt:
-                    self.mqtt.zustand_setzen(self.erfassung.mqtt_zustand())
+                    self.mqtt.zustand_setzen({**self.erfassung.mqtt_zustand(),
+                                              **self.regelung.mqtt_zustand()})
                 self.erfassung.senden_noetig = False
                 self.zyklus_fehler = None
             except Exception as e:

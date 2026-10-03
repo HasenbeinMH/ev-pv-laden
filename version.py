@@ -8,9 +8,22 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 CHANGELOG = [
+    {
+        "version": "0.3.0",
+        "datum": "2026-10-03",
+        "titel": "Strategie im Trockenlauf",
+        "aenderungen": [
+            "Berechnet die erlaubte Ladeleistung: Hausakku zuerst bis zur SoC-Schwelle, darueber wird sein Ueberschuss zum Auto umgeleitet; Akku-Entladung zaehlt immer als Defizit",
+            "Glaettung, Start-/Stopp-Hysterese, Mindestladedauer und Mindestpause; Modi Aus, Nur PV, Min + PV, Sofort",
+            "Veraltete Messwerte: kein Ueberschuss, Stopp ohne Verzoegerung",
+            "Oberflaeche: Moduswahl, Entscheidung mit Grund, Diagramm der letzten Stunde, Parameter",
+            "HA-Entitaeten: erlaubte Ladeleistung, virtueller Netzwert, Grund, Regelzustand, Modus, Treiber",
+            "Schreibt weiterhin nichts auf die Wallbox",
+        ],
+    },
     {
         "version": "0.2.0",
         "datum": "2026-10-03",

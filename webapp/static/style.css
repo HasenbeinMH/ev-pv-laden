@@ -38,3 +38,18 @@ tr:last-child td { border-bottom: none; }
 .ok { color: var(--ok); } .schlecht { color: var(--schlecht); } .warnung { color: var(--warnung); }
 .protokoll { background: var(--karte); border: 1px solid var(--linie); border-radius: 8px; padding: 10px;
   max-height: 320px; overflow: auto; font: 12px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+.gross { font-size: 1.15rem; font-weight: 600; }
+.modi { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--linie);
+  background: var(--karte); color: var(--text); cursor: pointer; }
+button:hover { border-color: var(--akzent); }
+.modi button.aktiv { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+.diagramm-kopf { display: flex; justify-content: space-between; align-items: center; margin: 14px 0 4px; }
+select, input { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--linie);
+  background: var(--karte); color: var(--text); }
+.diagramm { height: 320px; background: var(--karte); border: 1px solid var(--linie); border-radius: 8px; }
+.parameter { margin-top: 14px; background: var(--karte); border: 1px solid var(--linie); border-radius: 8px; padding: 10px 12px; }
+.parameter summary { cursor: pointer; font-weight: 600; }
+.param-gitter { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 10px; }
+.param-gitter label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--leise); }
+.param-aktion { margin-top: 10px; display: flex; gap: 12px; align-items: center; }

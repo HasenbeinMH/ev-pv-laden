@@ -85,6 +85,15 @@ def _leistung(name, schluessel, icon):
             "value_template": f"{{{{ value_json.{schluessel} }}}}", "icon": icon}
 
 
+def _text(name, schluessel, icon, diagnose=False):
+    d = {"platform": "sensor", "name": name, "unique_id": f"{KENNUNG}_{schluessel}",
+         "default_entity_id": f"sensor.{KENNUNG}_{schluessel}",
+         "value_template": f"{{{{ value_json.{schluessel} }}}}", "icon": icon}
+    if diagnose:
+        d["entity_category"] = "diagnostic"
+    return d
+
+
 def discovery_nutzlast() -> dict:
     return {
         "device": {"identifiers": [KENNUNG], "name": "EV PV-Laden", "manufacturer": "HasenbeinMH",
@@ -102,6 +111,14 @@ def discovery_nutzlast() -> dict:
             "leistung_pv": _leistung("Ladeleistung PV", "leistung_pv", "mdi:solar-power"),
             "leistung_akku": _leistung("Ladeleistung Hausakku", "leistung_akku", "mdi:home-battery"),
             "leistung_netz": _leistung("Ladeleistung Netz", "leistung_netz", "mdi:transmission-tower"),
+            # Regelung (Strategie): was das Auto bekommen darf und warum
+            "p_erlaubt": _leistung("Erlaubte Ladeleistung", "p_erlaubt", "mdi:car-electric"),
+            "pgrid_virtuell": _leistung("Virtueller Netzwert (ids)", "pgrid_virtuell",
+                                        "mdi:transmission-tower-export"),
+            "grund": _text("Grund", "grund", "mdi:information-outline"),
+            "regelzustand": _text("Regelzustand", "regelzustand", "mdi:state-machine"),
+            "modus": _text("Lademodus", "modus", "mdi:ev-station"),
+            "treiber": _text("Aktiver Treiber", "treiber", "mdi:cog-transfer", diagnose=True),
             # Fuer die externe Watchdog-Automation (M8): aendert sich in jedem Sendezyklus
             "lebenszeichen": {
                 "platform": "sensor", "name": "Lebenszeichen", "unique_id": f"{KENNUNG}_lebenszeichen",

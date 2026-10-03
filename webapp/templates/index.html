@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>EV PV-Laden</title>
   <link rel="stylesheet" href="static/style.css">
+  <script src="static/echarts.min.js"></script>
 </head>
 <body>
 <header>
@@ -22,6 +23,27 @@
   </section>
 
   <section id="konfig-fehler" class="fehler" hidden></section>
+
+  <h2>Regelung <span id="treiber" class="klein"></span></h2>
+  <div id="modi" class="modi"></div>
+  <section class="karten">
+    <div class="karte"><div class="titel">Entscheidung</div><div id="entscheidung" class="wert gross">…</div>
+      <div id="grund" class="klein"></div></div>
+    <div class="karte"><div class="titel">Verfügbar (roh / geglättet)</div><div id="verfuegbar" class="wert">…</div></div>
+    <div class="karte"><div class="titel">Erlaubt / virtueller Netzwert</div><div id="erlaubt" class="wert">…</div></div>
+  </section>
+  <div class="diagramm-kopf">
+    <span class="klein">Leistungen (W)</span>
+    <select id="zeitraum"><option value="900">15 min</option><option value="1800" selected>30 min</option><option value="3600">60 min</option></select>
+  </div>
+  <div id="diagramm" class="diagramm"></div>
+
+  <details class="parameter">
+    <summary>Parameter der Strategie</summary>
+    <form id="param-form" class="param-gitter"></form>
+    <div class="param-aktion"><button id="param-speichern" type="button">Speichern</button>
+      <span id="param-meldung" class="klein"></span></div>
+  </details>
 
   <h2>Bilanz</h2>
   <section class="karten">
@@ -155,6 +177,88 @@ async function protokoll() {
     el.scrollTop = el.scrollHeight;
   } catch (e) {}
 }
+const PARAM = [
+  ["akku_soc_schwelle", "Akku-SoC-Schwelle (%) – darunter lädt der Hausakku zuerst"],
+  ["akku_unterstuetzung_w", "Akku darf Auto unterstützen mit max. (W)"],
+  ["akku_unterstuetzung_soc", "… oberhalb SoC (%)"],
+  ["tau_s", "Glättung, Zeitkonstante (s)"],
+  ["start_w", "Start ab Überschuss (W)"], ["start_verz_s", "… anliegend für (s)"],
+  ["stopp_w", "Stopp unter Überschuss (W)"], ["stopp_verz_s", "… anliegend für (s)"],
+  ["min_ladedauer_s", "Mindestladedauer (s)"], ["min_pause_s", "Mindestpause (s)"],
+];
+let paramGeladen = false, diagramm = null;
+async function parameterSenden(daten) {
+  const r = await fetch("api/parameter", {method: "POST", headers: {"Content-Type": "application/json"},
+                                          body: JSON.stringify(daten)});
+  const j = await r.json();
+  const m = document.getElementById("param-meldung");
+  m.textContent = j.ok ? "gespeichert" : j.fehler.join("; ");
+  m.className = j.ok ? "ok" : "schlecht";
+  regelung();
+}
+async function regelung() {
+  try {
+    const r = await (await fetch("api/regelung")).json();
+    if (!r.modi) return;
+    document.getElementById("treiber").textContent = "· Treiber: " + r.treiber;
+    document.getElementById("modi").innerHTML = Object.entries(r.modi).map(([k, n]) =>
+      `<button type="button" data-modus="${k}" class="${k === r.modus ? "aktiv" : ""}">${esc(n)}</button>`).join("");
+    document.querySelectorAll("#modi button").forEach(b =>
+      b.onclick = () => parameterSenden({modus: b.dataset.modus}));
+    const a = r.ausgang;
+    if (a) {
+      document.getElementById("entscheidung").innerHTML = a.freigabe
+        ? `<span class="ok">Laden</span> <span class="klein">(${esc(a.zustand)})</span>`
+        : `<span class="schlecht">nicht laden</span> <span class="klein">(${esc(a.zustand)})</span>`;
+      document.getElementById("grund").textContent = a.grund;
+      document.getElementById("verfuegbar").textContent = `${fmt(a.p_roh, "leistung")} / ${fmt(a.p_glatt, "leistung")}`;
+      document.getElementById("erlaubt").textContent = `${fmt(a.p_erlaubt, "leistung")} / ${fmt(a.pgrid_virtuell, "leistung")}`;
+    }
+    if (!paramGeladen) {
+      document.getElementById("param-form").innerHTML = PARAM.map(([k, t]) =>
+        `<label>${esc(t)}<input type="number" step="any" name="${k}" value="${r.parameter[k]}"></label>`).join("");
+      paramGeladen = true;
+    }
+  } catch (e) {}
+}
+document.getElementById("param-speichern").onclick = () => {
+  const daten = {};
+  new FormData(document.getElementById("param-form")).forEach((v, k) => daten[k] = Number(v));
+  parameterSenden(daten);
+};
+const FARBE = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+async function verlauf() {
+  try {
+    const sek = Number(document.getElementById("zeitraum").value);
+    const v = await (await fetch(`api/verlauf?sekunden=${sek}&schritt=${sek > 1800 ? 4 : 2}`)).json();
+    if (!window.echarts || !v.daten) return;
+    diagramm = diagramm || echarts.init(document.getElementById("diagramm"));
+    const i = Object.fromEntries(v.spalten.map((n, j) => [n, j]));
+    const reihe = (name, sp, farbe, extra = {}) => ({name, type: "line", showSymbol: false,
+      data: v.daten.map(d => [d[i.zeit] * 1000, d[i[sp]]]), lineStyle: {width: 1.5}, color: farbe, ...extra});
+    const text = FARBE("--text"), leise = FARBE("--leise"), linie = FARBE("--linie");
+    diagramm.setOption({
+      animation: false, grid: {left: 56, right: 16, top: 36, bottom: 32},
+      legend: {top: 0, textStyle: {color: text}},
+      tooltip: {trigger: "axis", valueFormatter: x => x === null || x === undefined ? "–" : Math.round(x).toLocaleString("de-DE") + " W"},
+      xAxis: {type: "time", axisLabel: {color: leise}, axisLine: {lineStyle: {color: linie}}},
+      yAxis: {type: "value", axisLabel: {color: leise}, splitLine: {lineStyle: {color: linie}}},
+      series: [
+        reihe("verfügbar roh", "p_roh", "#9aa5b1", {lineStyle: {width: 1, type: "dotted"}}),
+        reihe("verfügbar geglättet", "p_glatt", "#2563eb"),
+        reihe("P_erlaubt", "p_erlaubt", "#16a34a", {lineStyle: {width: 2.5}}),
+        reihe("Auto", "p_auto", "#f59e0b"),
+        reihe("Netz (+Bezug)", "netz", "#dc2626"),
+        reihe("Akku (+Entladung)", "akku", "#9333ea"),
+      ],
+    }, true);
+  } catch (e) {}
+}
+document.getElementById("zeitraum").onchange = verlauf;
+window.addEventListener("resize", () => diagramm && diagramm.resize());
+regelung(); verlauf();
+setInterval(regelung, 2000);
+setInterval(verlauf, 5000);
 aktualisieren(); protokoll(); bilanz();
 setInterval(bilanz, 5000);
 setInterval(aktualisieren, 2000);

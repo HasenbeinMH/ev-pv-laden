@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.3.0] - 2026-10-03
+
+Strategie im Trockenlauf – rechnet und zeigt, schreibt aber nichts auf die Wallbox.
+
+- Berechnet die erlaubte Ladeleistung: Hausakku zuerst bis zur SoC-Schwelle, darüber wird sein Überschuss zum Auto umgeleitet; Akku-Entladung zählt immer als Defizit
+- Glättung, Start-/Stopp-Hysterese, Mindestladedauer und Mindestpause; Modi Aus, Nur PV, Min + PV, Sofort
+- Veraltete Messwerte: kein Überschuss, Stopp ohne Verzögerung
+- Oberfläche: Moduswahl, Entscheidung mit Grund, Diagramm der letzten Stunde, Parameter
+- HA-Entitäten: erlaubte Ladeleistung, virtueller Netzwert, Grund, Regelzustand, Modus, Treiber
+
 ## [0.2.0] - 2026-10-03
 
 Bilanz PV/Akku/Netz – noch ohne Regelung. **Braucht den Mosquitto-Broker** (für die HA-Entitäten).
