@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.10.3"
+VERSION = "0.10.4"
 
 CHANGELOG = [
+    {
+        "version": "0.10.4",
+        "datum": "2026-10-04",
+        "titel": "Tageskurve nach Neustart vollstaendig",
+        "aenderungen": [
+            "Dashboard 'Heute': nach einem Neustart oder Update wird der Verlauf seit Mitternacht aus der HA-Historie nachgeladen",
+            "y-Achse der Tageskurve mit Nachkommastelle (0,5 / 1 / 1,5 kW statt doppelter Werte)",
+        ],
+    },
     {
         "version": "0.10.3",
         "datum": "2026-10-04",

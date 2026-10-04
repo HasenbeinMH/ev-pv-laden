@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.10.4] - 2026-10-04
+
+- Dashboard „Heute“: Nach einem Neustart oder Update lädt das Add-on den Verlauf seit Mitternacht aus der HA-Historie nach (PV, Haus, Auto) – die Kurve beginnt nicht mehr erst beim Add-on-Start
+- y-Achse der Tageskurve mit Nachkommastelle (0,5 / 1 / 1,5 kW statt „1 kW, 1 kW, 2 kW“)
+
 ## [0.10.3] - 2026-10-04
 
 Gemeinsame Zähler mit dem EV Tracker.

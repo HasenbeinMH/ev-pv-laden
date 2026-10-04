@@ -26,7 +26,7 @@ from pvprognose import PVPrognose
 from prozessabbild import Prozessabbild
 from regelung import Regelung
 from strategie import MIN_PV, NUR_PV
-from tagesverlauf import Tagesverlauf, hausverbrauch
+from tagesverlauf import SIGNALE as TAG_SIGNALE, Tagesverlauf, aus_historie, hausverbrauch
 from tracker import Uebergabe
 from treiber import Aktion, TreiberA, TreiberBasis, TreiberIds
 from wiederanlauf import FUP, TREIBER_A, Wiederanlauf
@@ -126,6 +126,7 @@ class Laufzeit:
             self.ha.schreiben_gesperrt = self.trockenlauf
             self._tasks.append(asyncio.create_task(self.ha.laufen(), name="ha_client"))
             self._tasks.append(asyncio.create_task(self._prognose_holen(), name="prognose"))
+            self._tasks.append(asyncio.create_task(self._heute_vorfuellen(), name="heute"))
             self.pv = PVPrognose(self.konfig, self.prognose_eigen)
             self._tasks.append(asyncio.create_task(self.pv.laufen(self.ha), name="pvmodell"))
 
@@ -294,6 +295,33 @@ class Laufzeit:
                      pv_anteil=round(pv / en.eto * 100) if en.eto > 0 else None,
                      start=offen.start.isoformat(timespec="minutes"))
         return d
+
+    async def _heute_vorfuellen(self) -> None:
+        """Tageskurve nach einem Neustart aus der HA-Historie seit Mitternacht nachladen."""
+        for _ in range(120):              # bis HA verbunden ist und die Einheiten bekannt sind
+            if self.ha and self.ha.verbunden and self.abbild.werte["netz_w"].empfangen is not None:
+                break
+            await asyncio.sleep(1)
+        else:
+            log.info("Tageskurve: HA nicht rechtzeitig verbunden – kein Nachladen")
+            return
+        await asyncio.sleep(3)            # Einheiten aller Signale abwarten
+        signale = {n: (self.abbild.werte[n].signal, self.abbild.werte[n].einheit)
+                   for n in TAG_SIGNALE if n in self.abbild.werte}
+        jetzt = datetime.now(self.erfassung.tz)
+        mitternacht = jetzt.replace(hour=0, minute=0, second=0, microsecond=0)
+        try:
+            antwort = await self.ha.anfrage({
+                "type": "history/history_during_period", "start_time": mitternacht.isoformat(),
+                "end_time": jetzt.isoformat(), "entity_ids": [s.entity_id for s, _ in signale.values()],
+                "minimal_response": True, "no_attributes": True, "significant_changes_only": False,
+                "include_start_time_state": True}, timeout=60)
+            punkte = await asyncio.to_thread(aus_historie, antwort or {}, signale, mitternacht.timestamp(),
+                                             jetzt.timestamp(), self.konfig.sensor_haus_enthaelt_auto)
+            n = self.tagesverlauf.vorfuellen(punkte)
+            log.info("Tageskurve: %d Minuten seit Mitternacht aus der HA-Historie nachgeladen", n)
+        except Exception as e:
+            log.warning("Tageskurve: Historie nicht geladen: %s", e)
 
     async def _prognose_holen(self) -> None:
         """PV-Prognose alle 15 min (sobald HA verbunden ist)."""

@@ -289,11 +289,12 @@ async function heuteLaden() {
       legend: {top: 0, itemWidth: 12, textStyle: {color: a.text, fontSize: 11}},
       tooltip: a.tooltip,
       xAxis: {...a.x, min: tag.getTime(), max: tag.getTime() + 86400e3},
-      yAxis: {...a.y, axisLabel: {...a.y.axisLabel, formatter: x => zahl(x / 1000) + " kW"}},
+      yAxis: {...a.y, axisLabel: {...a.y.axisLabel,
+        formatter: x => zahl(x / 1000, Number.isInteger(x / 1000) ? 0 : 1) + " kW"}},
       series: [reihe("PV", "pv", "--solar", true), reihe("Haus", "haus", "--verbrauch", true),
                reihe("Auto", "auto", "--auto", true)],
     }, true);
-    $("heute-unter").textContent = v.daten.length && v.daten[0][0] * 1000 > tag.getTime() + 600e3
+    $("heute-unter").textContent = v.daten.length && v.daten[0][0] * 1000 > tag.getTime() + 3600e3
       ? "seit Add-on-Start " + new Date(v.daten[0][0] * 1000).toLocaleTimeString("de-DE", {hour: "2-digit", minute: "2-digit"})
       : "Minutenmittel seit Mitternacht";
   } catch (e) {}
