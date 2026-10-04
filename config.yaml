@@ -5,7 +5,7 @@
 # Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
 # Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
 name: EV PV-Laden
-version: "0.10.0"
+version: "0.10.1"
 slug: ev_pv_laden
 description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
 url: "https://github.com/HasenbeinMH/ev-pv-laden"
@@ -17,6 +17,8 @@ boot: auto
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:ev-station
+# Seitenleiste auch fuer Benutzer ohne Admin-Rechte (Standard waere nur Admins)
+panel_admin: false
 homeassistant_api: true
 # Supervisor-API: nur fuer die MQTT-Zugangsdaten (GET /services/mqtt)
 hassio_api: true

@@ -8,9 +8,15 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.10.0"
+VERSION = "0.10.1"
 
 CHANGELOG = [
+    {
+        "version": "0.10.1",
+        "datum": "2026-10-04",
+        "titel": "Fuer alle Benutzer sichtbar",
+        "aenderungen": ["Seitenleisten-Eintrag fuer alle HA-Benutzer sichtbar, nicht nur fuer Admins (panel_admin: false)"],
+    },
     {
         "version": "0.10.0",
         "datum": "2026-10-04",
