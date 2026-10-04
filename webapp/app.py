@@ -126,6 +126,15 @@ def api_heute(request: Request):
     return lz.tagesverlauf.liste(mitternacht.timestamp())
 
 
+@app.post("/api/tracker/pruefen")
+async def api_tracker_pruefen(request: Request):
+    """Verbindungstest zum EV Tracker (leere Ladung, wird dort nicht gespeichert)."""
+    lz = request.app.state.lz
+    if not lz.tracker:
+        return JSONResponse({"ok": False, "text": "Add-on startet noch"}, status_code=409)
+    return await lz.tracker.verbindung_pruefen()
+
+
 @app.post("/api/tracker/senden")
 async def api_tracker_senden(request: Request):
     """Offene Ladevorgaenge sofort an den EV Tracker uebergeben (sonst jede Minute)."""

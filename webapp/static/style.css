@@ -197,6 +197,9 @@ main:has(#seite-live.aktiv) { max-width: 1600px; }
 .auto-plan:empty { display: none; }
 .auto-plan b { color: var(--text); }
 .auto-knoepfe { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; }
+#tracker-pruefen, #tracker-senden { font: inherit; font-size: .85rem; padding: 5px 12px; border-radius: 8px;
+  border: 1px solid var(--linie); background: var(--karte-2); color: var(--text); cursor: pointer; }
+#tracker-test { margin: -4px 0 10px; }
 .auto-knoepfe button, a.knopf { font: inherit; font-size: .9rem; padding: 7px 14px; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--linie); background: var(--karte-2); color: var(--text); text-decoration: none; }
 .auto-knoepfe button:hover, a.knopf:hover { border-color: var(--text-3); }

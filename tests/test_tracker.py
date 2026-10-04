@@ -126,3 +126,35 @@ def test_nicht_erreichbar_bleibt_im_puffer(frische_db):
 def test_offener_vorgang_wird_nicht_gesendet(frische_db):
     db.vorgang_anlegen("2026-10-05T10:00:00+02:00", {}, "nur_pv")
     assert db.vorgaenge_ungesendet() == []
+
+
+# --- Verbindungstest -------------------------------------------------------------------------
+
+def test_verbindungstest_token_richtig(frische_db):
+    def antwort(d):          # wie heimladung.annehmen: leere Ladung -> 422 (nach Token-Pruefung)
+        assert d == {}
+        return web.json_response({"ok": False, "error": "start: keine gültige Zeit (None)"}, status=422)
+
+    async def ablauf(url):
+        return await Uebergabe(Konfig(ev_tracker_url=url, ev_tracker_token=TOKEN)).verbindung_pruefen()
+
+    e, empfangen = asyncio.run(mit_server(antwort, ablauf))
+    assert e["ok"] and "Token angenommen" in e["text"] and empfangen == [{}]
+
+
+def test_verbindungstest_token_falsch(frische_db):
+    async def ablauf(url):
+        return await Uebergabe(Konfig(ev_tracker_url=url, ev_tracker_token="falsch")).verbindung_pruefen()
+
+    e, _ = asyncio.run(mit_server(lambda d: web.json_response({"ok": True}), ablauf))
+    assert not e["ok"] and "401" in e["text"]
+
+
+def test_verbindungstest_nicht_erreichbar(frische_db):
+    u = Uebergabe(Konfig(ev_tracker_url="http://127.0.0.1:9", ev_tracker_token=TOKEN))
+    e = asyncio.run(u.verbindung_pruefen())
+    assert not e["ok"] and "nicht erreichbar" in e["text"]
+
+
+def test_verbindungstest_ohne_konfiguration(frische_db):
+    assert not asyncio.run(Uebergabe(Konfig()).verbindung_pruefen())["ok"]

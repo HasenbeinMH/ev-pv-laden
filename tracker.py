@@ -130,6 +130,40 @@ class Uebergabe:
         self._fehler(f"Tracker-Fehler {status}: {grund}")
         return False
 
+    async def verbindung_pruefen(self, sitzung: aiohttp.ClientSession | None = None) -> dict:
+        """Prueft Adresse und Token, ohne etwas zu speichern: Eine leere Ladung lehnt der
+        Tracker NACH der Token-Pruefung mit 422 ab (heimladung.annehmen: start fehlt).
+        422 = alles richtig, 401/403 = Token falsch bzw. Empfang aus, keine Antwort = Adresse."""
+        if not self.aktiv:
+            return {"ok": False, "text": "Adresse oder Token fehlen in den Add-on-Optionen"}
+        eigene = sitzung is None
+        sitzung = sitzung or aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=TIMEOUT_S))
+        try:
+            async with sitzung.post(adresse(self.k), json={},
+                                    headers={"Authorization": f"Bearer {self.k.ev_tracker_token}"}) as r:
+                status, text = r.status, await r.text()
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            ergebnis = {"ok": False, "text": f"Tracker unter {adresse(self.k)} nicht erreichbar "
+                                             f"({type(e).__name__}) – Adresse prüfen"}
+        else:
+            grund = _grund(text) or f"HTTP {status}"
+            if status == 422:
+                ergebnis = {"ok": True, "text": "Verbindung in Ordnung: Tracker erreichbar, Token angenommen"}
+            elif status in (401, 403):
+                ergebnis = {"ok": False, "text": f"Tracker lehnt den Token ab ({status}): {grund}"}
+            elif 200 <= status < 300:
+                # Darf nicht vorkommen (leere Ladung) – trotzdem ehrlich melden
+                ergebnis = {"ok": True, "text": f"Tracker antwortet {status} auf eine leere Testladung – bitte dort prüfen"}
+            else:
+                ergebnis = {"ok": False, "text": f"Unerwartete Antwort {status}: {grund} – ist die Adresse der EV Tracker?"}
+        finally:
+            if eigene:
+                await sitzung.close()
+        db.ereignis("info" if ergebnis["ok"] else "warnung", "tracker", "Verbindungstest: " + ergebnis["text"])
+        if ergebnis["ok"]:
+            self.letzter_fehler, self._gemeldet = None, None
+        return ergebnis
+
     def _fehler(self, text: str) -> None:
         self.letzter_fehler = text
         if text != self._gemeldet:      # nicht bei jedem Wiederholen ins Protokoll

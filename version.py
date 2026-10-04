@@ -8,9 +8,15 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.10.1"
+VERSION = "0.10.2"
 
 CHANGELOG = [
+    {
+        "version": "0.10.2",
+        "datum": "2026-10-04",
+        "titel": "EV Tracker: Verbindung testen",
+        "aenderungen": ["Knopf 'Verbindung testen' bei den Ladevorgaengen: prueft Adresse und Token des EV Trackers mit einer leeren Testladung, die dort nicht gespeichert wird"],
+    },
     {
         "version": "0.10.1",
         "datum": "2026-10-04",

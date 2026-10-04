@@ -696,11 +696,22 @@ function trackerZelle(v) {
 }
 function trackerZeigen(t) {
   const el = $("tracker-status"), knopf = $("tracker-senden");
+  $("tracker-pruefen").hidden = !t || !t.aktiv;
   if (!t || !t.aktiv) { el.textContent = "EV Tracker: nicht eingerichtet"; knopf.hidden = true; return; }
   el.className = t.fehler ? "schlecht" : "klein";
   el.textContent = "EV Tracker: " + (t.fehler || (t.offen ? `${t.offen} offen` : "alles übergeben"));
   knopf.hidden = !t.offen;
 }
+$("tracker-pruefen").onclick = async () => {
+  const el = $("tracker-test");
+  el.hidden = false; el.className = "klein"; el.textContent = "teste …";
+  try {
+    const j = await (await fetch("api/tracker/pruefen", {method: "POST"})).json();
+    el.className = j.ok ? "ok" : "schlecht";
+    el.textContent = (j.ok ? "✓ " : "✗ ") + j.text;
+  } catch (e) { el.className = "schlecht"; el.textContent = "✗ Add-on nicht erreichbar"; }
+  status();
+};
 $("tracker-senden").onclick = async () => {
   const r = await fetch("api/tracker/senden", {method: "POST"});
   const j = await r.json();

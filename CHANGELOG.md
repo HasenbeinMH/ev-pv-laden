@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.10.2] - 2026-10-04
+
+- Reiter Laden → Ladevorgänge: Knopf **„Verbindung testen“** prüft Adresse und Token des EV Trackers. Gesendet wird eine leere Testladung – der Tracker lehnt sie nach der Token-Prüfung ab (422) und speichert nichts. Ergebnis: „Verbindung in Ordnung“, „Token abgelehnt“ oder „nicht erreichbar“; es steht auch im Ereignisprotokoll
+
 ## [0.10.1] - 2026-10-04
 
 - Der Eintrag „EV PV-Laden“ in der Seitenleiste ist jetzt für alle Benutzer von Home Assistant sichtbar, nicht nur für Admins (`panel_admin: false`). Die Add-on-Optionen kann weiterhin nur ein Admin ändern; der feste Trockenlauf (`trockenlauf: true`) bleibt eine Sperre, die über die Oberfläche nicht aufgehoben werden kann

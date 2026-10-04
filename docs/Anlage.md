@@ -5,7 +5,7 @@ Quelle: SolarEdge-Monitoring (Layout „Physisch“), Angaben Daniel, 2026-10-04
 - Inbetriebnahme: 06.11.2020
 - Wechselrichter: SolarEdge (1 Gerät) mit Leistungsoptimierern je Modul
 - 27 Module à 370 Wp = **9,99 kWp**
-- Hausakku: BYD HVS (über SolarEdge, Modbus)
+- Hausakku: BYD LVS 8.0 (8 kWh, 48 V; Wechselrichter SE10K-RWS48BNN4, über SolarEdge-Modbus) – „Battery1 Voltage“ in HA zeigt ~765 V, vermutlich die Zwischenkreisspannung, nicht die Akkuspannung
 
 ## Flächen
 
