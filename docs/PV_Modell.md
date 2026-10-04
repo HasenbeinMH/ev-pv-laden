@@ -35,6 +35,10 @@ Geprüft gegen `sensor.pv_erzeugung_kwh` (Mai–Sep 2026): +2 bis +3 % je Monat.
 | **Kennfeld (im Add-on)** | 0,47 kWh | **2,76 kWh** | **18 %** |
 | Machine Learning (Gradient Boosting) | 0,40 kWh | 2,7 kWh | 17 % |
 
+Mit den gemessenen Flächen (Süd 6°/179°, Nord 14°/359°, Ost 34°/86° statt 8°/180°, 12°/0°,
+25°/90°): 2,73 kWh bzw. 18,0 % – das Kennfeld hatte die falsche Geometrie schon weitgehend
+ausgeglichen, mit der richtigen muss es weniger korrigieren.
+
 Das Kennfeld ist fast so gut wie Machine Learning, aber nachvollziehbar und ohne
 scikit-learn im Container. Beispiel 03.10.2026: gemessen 14,4 kWh, Standard 18,1 kWh,
 Kennfeld 14,0 kWh.

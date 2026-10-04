@@ -21,7 +21,8 @@ DATEN = os.path.join(os.path.dirname(HIER), "data", "modell")
 TZ = ZoneInfo("Europe/Berlin")
 # Standort lokal in dev/data/modell/standort.json – nicht im Repo
 LAT, LON = (lambda d: (d["lat"], d["lon"]))(json.load(open(os.path.join(DATEN, "standort.json"))))
-FL = [pm.Flaeche("sued", 8, 180, 3.33), pm.Flaeche("nord", 12, 0, 3.33), pm.Flaeche("ost", 25, 90, 3.33)]
+# Gemessen 2026-10-04 (Neigung Wasserwaage, Azimut Luftbild)
+FL = [pm.Flaeche("sued", 6, 179, 3.33), pm.Flaeche("nord", 14, 359, 3.33), pm.Flaeche("ost", 34, 86, 3.33)]
 
 
 def gti(prefix):

@@ -11,11 +11,19 @@ Quelle: SolarEdge-Monitoring (Layout „Physisch“), Angaben Daniel, 2026-10-04
 
 | Fläche | Neigung | Azimut (0° N, 90° O, 180° S) | Module | Leistung |
 |---|---|---|---|---|
-| Süd | 8° | 180° | 9 | 3.330 Wp |
-| Nord | 12° | 0° | 9 | 3.330 Wp |
-| Ost | 25° | 90° | 9 | 3.330 Wp |
+| Süd | 6° | 179° | 9 | 3.330 Wp |
+| Nord | 14° | 359° | 9 | 3.330 Wp |
+| Ost | 34° | 86° | 9 | 3.330 Wp |
 
-Neigung/Azimut wie in Forecast.Solar eingetragen (noch nicht vor Ort geprüft).
+Gemessen 2026-10-04: Neigung mit Wasserwaagen-App am Modulrahmen (Daniel), Azimut aus dem
+Luftbild (GEOportal.NRW, Richtung der Modulkanten per Strukturtensor, UTM-Meridiankonvergenz
+−1,7° berücksichtigt; Süd/Nord ±1°, Ost ±2°). Vorher eingetragen: 8°/180°, 12°/0°, 25°/90°.
+Im SolarEdge-Portal sind Neigung/Ausrichtung falsch hinterlegt (0°/180°) – betrifft nur dessen
+eigene Prognose, nicht die Messwerte.
+
+Langzeit je Modul (Optimierer-Gesamtenergie seit 11/2020, Summe 41.035 kWh):
+Süd 15.297 kWh (100 %), Nord 14.146 kWh (92 %), Ost 11.592 kWh (76 %).
+1.1.10 nur 577 kWh = 37 % des besten Ost-Moduls 1.1.21 (1.562 kWh).
 Süd und Nord sind ein aufgeständertes Feld mit abwechselnden Reihen.
 
 ## Module je Fläche (Optimierer-Nummer)
