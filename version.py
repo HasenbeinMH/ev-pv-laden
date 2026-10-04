@@ -8,9 +8,15 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.6.0"
+VERSION = "0.6.1"
 
 CHANGELOG = [
+    {
+        "version": "0.6.1",
+        "datum": "2026-10-04",
+        "titel": "Hausverbrauch im Energiefluss",
+        "aenderungen": ["Neuer optionaler Sensor sensor_haus fuer den Hausverbrauch im Energiefluss; misst er die Wallbox mit (sensor_haus_enthaelt_auto), wird die Ladeleistung abgezogen"],
+    },
     {
         "version": "0.6.0",
         "datum": "2026-10-04",

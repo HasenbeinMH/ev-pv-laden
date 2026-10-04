@@ -5,7 +5,7 @@
 # Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
 # Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
 name: EV PV-Laden
-version: "0.6.0"
+version: "0.6.1"
 slug: ev_pv_laden
 description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
 url: "https://github.com/HasenbeinMH/ev-pv-laden"
@@ -34,6 +34,9 @@ options:
   sensor_akku_leistung_invertieren: true
   sensor_akku_soc: sensor.se_modbus_daten_battery1_state_of_charge
   sensor_pv: sensor.nodered_338b35fcb1bd7ed8_2
+  # Hausverbrauch fuer die Anzeige (optional); enthaelt er die Wallbox, zieht das Add-on sie ab
+  sensor_haus: sensor.nodered_1c07e9ce6774f5ec
+  sensor_haus_enthaelt_auto: true
   # Schreibt das Messgeraet nur bei Wertaenderung (SolarEdge-Akku), zeigt dieser Sensor,
   # dass die Abfrage noch laeuft (Lebensbit des ganzen Geraets)
   sensor_lebenszeichen: sensor.se_modbus_daten_m1_ac_power
@@ -83,6 +86,8 @@ schema:
   sensor_akku_leistung_invertieren: bool
   sensor_akku_soc: match(^(sensor\.[a-z0-9_]+)?$)
   sensor_pv: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_haus: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_haus_enthaelt_auto: bool
   sensor_lebenszeichen: match(^(sensor\.[a-z0-9_]+)?$)
   max_alter_s: int(5,300)
   goe_seriennummer: match(^[0-9]+$)

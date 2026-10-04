@@ -42,6 +42,9 @@ class Konfig:
     sensor_akku_leistung_invertieren: bool = True
     sensor_akku_soc: str = "sensor.se_modbus_daten_battery1_state_of_charge"
     sensor_pv: str = ""
+    # Hausverbrauch (Anzeige im Energiefluss); misst er hinter dem Zaehler, enthaelt er die Wallbox
+    sensor_haus: str = ""
+    sensor_haus_enthaelt_auto: bool = True
     sensor_lebenszeichen: str = ""
     max_alter_s: int = 15
     goe_seriennummer: str = ""
@@ -87,7 +90,7 @@ def pruefen(k: Konfig) -> list[str]:
     f = []
     if not k.sensor_netz or not _ENTITY.match(k.sensor_netz):
         f.append(f"sensor_netz ungueltig: '{k.sensor_netz}'")
-    for name in ("sensor_akku_leistung", "sensor_akku_soc", "sensor_pv", "sensor_lebenszeichen"):
+    for name in ("sensor_akku_leistung", "sensor_akku_soc", "sensor_pv", "sensor_lebenszeichen", "sensor_haus"):
         wert = getattr(k, name)
         if wert and not _ENTITY.match(wert):
             f.append(f"{name} ungueltig: '{wert}'")

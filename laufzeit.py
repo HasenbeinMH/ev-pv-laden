@@ -233,6 +233,7 @@ class Laufzeit:
             "konfig_ok": not self.konfig_fehler,
             "konfig_fehler": self.konfig_fehler,
             "trockenlauf": k.trockenlauf if k else True,
+            "haus_enthaelt_auto": k.sensor_haus_enthaelt_auto if k else True,
             "grenzen": None if not k else {
                 "max_strom_a": k.max_strom_a, "strom_1ph_max_a": k.strom_1ph_max_a,
                 "min_strom_a": k.min_strom_a, "max_alter_s": k.max_alter_s,

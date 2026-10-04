@@ -61,6 +61,9 @@ def signale(k: Konfig) -> list[Signal]:
     if k.sensor_pv:
         liste.append(Signal("pv_w", k.sensor_pv, LEISTUNG, "PV-Erzeugung", pflicht=False,
                             lebenszeichen=mess))
+    if k.sensor_haus:
+        liste.append(Signal("haus_w", k.sensor_haus, LEISTUNG, "Hausverbrauch", pflicht=False,
+                            lebenszeichen=mess))
     if k.sensor_lebenszeichen:
         liste.append(Signal("lebenszeichen", k.sensor_lebenszeichen, TEXT,
                             "Lebenszeichen Messgeraet", pflicht=False))

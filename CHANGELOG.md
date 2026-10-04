@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.6.1] - 2026-10-04
+
+- Hausverbrauch im Energiefluss aus eigenem Sensor (`sensor_haus`). Misst er hinter dem Netzzähler und damit die Wallbox mit (`sensor_haus_enthaelt_auto: true`), zieht das Add-on die Ladeleistung ab. Ohne Sensor wird der Hausverbrauch wie bisher aus PV, Netz, Akku und Auto berechnet.
+
 ## [0.6.0] - 2026-10-04
 
 Eigenes PV-Prognosemodell, auf die Anlage zugeschnitten (Details: `docs/PV_Modell.md`).

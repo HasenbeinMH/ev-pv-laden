@@ -168,6 +168,8 @@ class LiveSimulator:
             w[f"sensor.{g}_nrg_{n + 3}"] = z(round(strom if (dreiphasig or n == 1) else 0.0, 1), "A")
         if k.sensor_pv:
             w[k.sensor_pv] = z(round(self.ueberschuss(t) + 600), "W")
+        if k.sensor_haus:   # misst hinter dem Zaehler: Grundlast 600 W + Wallbox
+            w[k.sensor_haus] = z(round(600 + p_auto), "W")
         for eid, zustand in w.items():
             if eid:
                 self.pa.aktualisieren(eid, zustand, mono)

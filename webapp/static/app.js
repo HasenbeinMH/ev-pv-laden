@@ -87,6 +87,7 @@ const LINIEN = {   // Richtung des Pfads: vom Knoten zum Haus (Auto: vom Haus zu
 };
 const NS = "http://www.w3.org/2000/svg";
 let flussZustand = {};
+let hausEnthaeltAuto = true;
 let letzteWerte = {};
 
 function flussAufbauen() {
@@ -163,7 +164,14 @@ function flussSetzen(w) {
   $("w-auto").textContent = watt(auto);
   const phasen = ["auto_i1", "auto_i2", "auto_i3"].filter(n => (w[n] ?? 0) >= 1).length;
   $("t-auto").textContent = w.auto_steckt === false ? "nicht angesteckt" : phasen ? `Auto · ${phasen}-phasig` : "Auto";
-  const haus = [pv, netz, akku, auto].some(v => v === null) ? null : pv + netz + akku - auto;
+  // Hausverbrauch: eigener Sensor (ohne Auto, falls er die Wallbox mitmisst), sonst Bilanz
+  let haus = null;
+  if (w.haus_w !== null && w.haus_w !== undefined) {
+    haus = hausEnthaeltAuto ? (auto === null ? null : w.haus_w - auto) : w.haus_w;
+    if (haus === null && hausEnthaeltAuto) haus = w.haus_w;   // Wallbox unbekannt: Gesamtwert
+  } else if (![pv, netz, akku, auto].some(v => v === null)) {
+    haus = pv + netz + akku - auto;
+  }
   $("w-haus").textContent = watt(haus === null ? null : Math.max(haus, 0));
 
   linieSetzen("pv", pv, 1, "--solar");
@@ -196,6 +204,7 @@ async function status() {
     $("konfig-fehler").hidden = s.konfig_ok;
     $("konfig-fehler").innerHTML = s.konfig_fehler.map(f => "<div>" + esc(f) + "</div>").join("");
 
+    hausEnthaeltAuto = s.haus_enthaelt_auto !== false;
     const w = {};
     s.signale.forEach(z => { w[z.name] = z.gueltig ? z.wert : null; });
     letzteWerte = w;
