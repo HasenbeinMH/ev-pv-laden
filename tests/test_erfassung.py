@@ -117,10 +117,15 @@ def test_mqtt_zustand_passt_zur_discovery(frische_db):
     # PV-Werte liefert die Laufzeit (Laufzeit._pv_mqtt)
     pv = {"pv_prognose_heute": 1.0, "pv_prognose_rest_heute": 0.5, "pv_prognose_morgen": 2.0,
           "pv_sauberkeit": 80}
-    zustand = {**erf.mqtt_zustand(), **reg.mqtt_zustand(), **pv}
+    zustand = {**erf.mqtt_zustand(), **reg.mqtt_zustand(), **pv,
+               **mqtt_ha.bedien_zustand(reg.param, True, None)}
     nutzlast = mqtt_ha.discovery_nutzlast()
     for name, komp in nutzlast["components"].items():
+        if set(komp) == {"platform"} or komp.get("state_topic") == mqtt_ha.EREIGNIS:
+            continue    # Entfernen einer alten Entitaet bzw. Ereignis mit eigenem Topic
         assert komp["unique_id"].startswith("ev_pv_laden_")
+        if "command_topic" in komp:
+            assert komp["command_topic"] == f"{mqtt_ha.BEFEHL}/{name}"
         assert name in zustand, f"{name} fehlt im Zustand"
     zaehler = [k for n, k in nutzlast["components"].items() if n.startswith("kwh_")]
     assert len(zaehler) == 4

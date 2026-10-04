@@ -18,6 +18,7 @@ const ICONS = {
   history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
   stethoscope: '<path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
   house: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   "utility-pole": '<path d="M12 2v20"/><path d="M2 5h20"/><path d="M3 3v2"/><path d="M7 3v2"/><path d="M17 3v2"/><path d="M21 3v2"/><path d="m19 5-7 7-7-7"/>',
 };
 const icon = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ""}</svg>`;
@@ -67,23 +68,28 @@ $("theme").onclick = () => {
   document.documentElement.dataset.theme = neu;
   try { localStorage.setItem("evpv-theme", neu); } catch (e) {}
   themeKnopf();
-  verlauf(); prognoseZeichnen(); sauberkeitZeichnen();
+  verlauf(); prognoseZeichnen(); sauberkeitZeichnen(); heuteLaden();
   flussAufbauen(); flussSetzen(letzteWerte);
 };
 themeKnopf();
 
 // ── Energiefluss (eigenes SVG im Stil von eedc) ─────────────────────────────
+// Sternpunkt in der Mitte = Hausnetz (wie die Sammelschiene im Verteiler): Erzeuger und
+// Speicher speisen ein, Haus und Auto beziehen.
+const MITTE = {x: 450, y: 260, r: 34};
 const KNOTEN = {
-  pv:   {x: 365, y: 16,  farbe: "--solar",  icon: "sun", name: "PV"},
-  netz: {x: 20,  y: 217, farbe: "--netz",   icon: "utility-pole", name: "Stromnetz"},
-  akku: {x: 710, y: 217, farbe: "--akku",   icon: "battery-charging", name: "Hausakku"},
-  auto: {x: 365, y: 412, farbe: "--auto",   icon: "car", name: "Auto"},
+  pv:   {x: 365, y: 16,  farbe: "--solar",     icon: "sun", name: "PV"},
+  netz: {x: 20,  y: 217, farbe: "--netz",      icon: "utility-pole", name: "Stromnetz"},
+  haus: {x: 710, y: 217, farbe: "--verbrauch", icon: "house", name: "Haus"},
+  akku: {x: 150, y: 412, farbe: "--akku",      icon: "battery-charging", name: "Hausakku"},
+  auto: {x: 580, y: 412, farbe: "--auto",      icon: "car", name: "Auto"},
 };
-const LINIEN = {   // Richtung des Pfads: vom Knoten zum Haus (Auto: vom Haus zum Auto)
-  pv:   "M450,102 C450,150 450,165 450,206",
-  netz: "M190,260 C265,302 332,296 398,268",
-  akku: "M710,260 C635,218 568,224 502,252",
-  auto: "M450,314 C478,350 422,380 450,412",
+const LINIEN = {   // Richtung des Pfads: Quelle -> Sternpunkt (pv, netz, akku), Sternpunkt -> Verbraucher (haus, auto)
+  pv:   "M450,102 C450,160 450,180 450,226",
+  netz: "M190,260 C280,260 340,260 416,260",
+  haus: "M484,260 C560,260 620,260 710,260",
+  akku: "M235,412 C235,330 360,296 426,284",
+  auto: "M474,284 C540,296 665,330 665,412",
 };
 const NS = "http://www.w3.org/2000/svg";
 let flussZustand = {};
@@ -109,10 +115,9 @@ function flussAufbauen() {
   }
   // Auto: Aufteilung PV/Akku/Netz als Balken unter der Kachel
   h += `<g id="auto-balken"></g>`;
-  h += `<circle class="haus-kreis" cx="450" cy="260" r="56"/>
-    <svg x="435" y="218" width="30" height="30" viewBox="0 0 24 24" class="i" style="color:var(--primary)">${ICONS.house}</svg>
-    <text class="wert" x="450" y="275" text-anchor="middle" id="w-haus">–</text>
-    <text class="name" x="450" y="295" text-anchor="middle">Haus</text>`;
+  h += `<circle class="mitte" cx="${MITTE.x}" cy="${MITTE.y}" r="${MITTE.r}"><title>Hausnetz</title></circle>
+    <svg x="${MITTE.x - 14}" y="${MITTE.y - 14}" width="28" height="28" viewBox="0 0 24 24" class="i"
+      style="color:var(--primary)">${ICONS.zap}</svg>`;
   svg.innerHTML = h;
 }
 
@@ -172,16 +177,20 @@ function flussSetzen(w) {
   } else if (![pv, netz, akku, auto].some(v => v === null)) {
     haus = pv + netz + akku - auto;
   }
-  $("w-haus").textContent = watt(haus === null ? null : Math.max(haus, 0));
+  if (haus !== null) haus = Math.max(haus, 0);
+  $("w-haus").textContent = watt(haus);
+  kpiSetzen(pv, haus, akku, soc, auto, phasen, w);
+  $("t-haus").textContent = w.haus_w !== null && w.haus_w !== undefined ? "Haus" : "Haus (berechnet)";
 
   linieSetzen("pv", pv, 1, "--solar");
   linieSetzen("netz", netz, netz !== null && netz >= 0 ? 1 : -1, netz !== null && netz >= 0 ? "--netz" : "--einspeisung");
   linieSetzen("akku", akku, akku !== null && akku >= 0 ? 1 : -1, akku !== null && akku >= 0 ? "--akku" : "--akku-laden");
   linieSetzen("auto", auto, 1, "--auto");
+  linieSetzen("haus", haus, 1, "--verbrauch");
 
   const b = $("auto-balken");
   if (auto !== null && netz !== null && akku !== null && auto > 30) {
-    const t = aufteilen(auto, netz, akku), x0 = 377, breite = 146;
+    const t = aufteilen(auto, netz, akku), x0 = KNOTEN.auto.x + 12, breite = 146;
     let x = x0, h = "";
     for (const [q, f] of [["pv", "--solar"], ["akku", "--akku"], ["netz", "--netz"]]) {
       const bw = breite * t[q] / auto;
@@ -194,13 +203,117 @@ function flussSetzen(w) {
   }
 }
 
+// ── Dashboard ───────────────────────────────────────────────────────────────
+const kwHtml = v => v === null || v === undefined ? "–"
+  : Math.abs(v) >= 1000 ? `${zahl(v / 1000, 1)}<small>kW</small>` : `${zahl(Math.round(v))}<small>W</small>`;
+function kpiSetzen(pv, haus, akku, soc, auto, phasen, w) {
+  $("kp-pv").innerHTML = kwHtml(pv);
+  $("kp-haus").innerHTML = kwHtml(haus);
+  $("kp-haus-unter").textContent = w.haus_w !== null && w.haus_w !== undefined ? "Verbrauch ohne Auto" : "Verbrauch (berechnet)";
+  $("kp-akku").innerHTML = akku === null ? "–" : (akku < -30 ? "+" : akku > 30 ? "−" : "") + kwHtml(Math.abs(akku));
+  $("kp-akku-unter").textContent = (soc === null || soc === undefined ? "" : zahl(soc) + " % · ")
+    + (akku === null ? "" : akku < -30 ? "wird geladen" : akku > 30 ? "entlädt" : "ruht");
+  $("kp-akku-box").style.setProperty("--c", akku !== null && akku < -30 ? "var(--akku-laden)" : "var(--akku)");
+  $("kp-auto").innerHTML = kwHtml(auto);
+  $("kp-auto-unter").textContent = w.auto_steckt === false ? "nicht angesteckt"
+    : phasen ? `Ladeleistung · ${phasen}-phasig` : "Ladeleistung";
+}
+
+let laufendeLadung = null, letzteRegelung = null;
+const MODUS_TEXT = {aus: "Laden gesperrt", nur_pv: "nur Überschuss", min_pv: "6 A + Überschuss",
+                    sofort: "volle Leistung", zielzeit: "bis zur Abfahrt"};
+function autoKarte() {
+  const r = letzteRegelung, w = letzteWerte;
+  if (!r) return;
+  const z = r.zielzeit || {}, a = r.ausgang || {}, soc = z.soc;
+  $("ac-soc").textContent = soc === null || soc === undefined ? "–" : zahl(soc);
+  $("ac-fuell").style.width = (soc || 0) + "%";
+  const ziel = $("ac-ziel");
+  ziel.style.display = r.modus === "zielzeit" ? "block" : "none";
+  ziel.style.left = `calc(${r.parameter.ziel_soc}% - 1px)`;
+  $("ac-steckt").textContent = w.auto_steckt === true ? "angesteckt" : w.auto_steckt === false ? "nicht angesteckt" : "";
+  $("ac-leistung").textContent = watt(w.auto_w);
+  const l = laufendeLadung;
+  $("ac-geladen").textContent = l ? `${zahl(l.eto, 1)} kWh geladen` : (soc === null || soc === undefined ? "SoC unter „Details“ eintragen" : "");
+  const laedt = (w.auto_w || 0) > 100;
+  $("ac-status").className = "auto-status " + (laedt ? "laedt" : a.freigabe ? "wartet" : "");
+  const grund = (a.grund || "").split(" · ")[0];   // Zielzeit-Teil steht im Plan-Kasten
+  $("ac-status-text").textContent = laedt ? (a.freigabe ? grund || "lädt" : "lädt") : grund || "–";
+  $("ac-status-text").title = a.grund || "";
+  const strom = Math.max(...["auto_i1", "auto_i2", "auto_i3"].map(n => w[n] || 0));
+  const phasen = ["auto_i1", "auto_i2", "auto_i3"].filter(n => (w[n] ?? 0) >= 1).length;
+  $("ac-info").textContent = [r.modi[r.modus], phasen ? `${phasen}-phasig` : null,
+                              strom >= 1 ? `${zahl(strom, 1)} A` : null, "Treiber " + r.treiber].filter(Boolean).join(" · ");
+  $("ac-pause").textContent = r.modus === "aus" ? "Laden fortsetzen" : "Laden pausieren";
+  // Zielzeit-Plan bzw. Herkunft des SoC
+  const p = z.plan, zeilen = [];
+  if (r.modus === "zielzeit" && p) {
+    zeilen.push(`<b>Zielzeit: ${zahl(r.parameter.ziel_soc)} % bis ${esc(uhr(p.abfahrt))}</b>`);
+    if (p.erreicht) zeilen.push("Ziel erreicht – weiter nur PV");
+    else if (p.benoetigt_kwh !== null) zeilen.push(`noch ${zahl(p.benoetigt_kwh, 1)} kWh`
+      + (p.sofort ? " · lädt mit Netz" : p.spaetester_start ? ` · Netz ab ${esc(uhr(p.spaetester_start))}` : ""));
+    else zeilen.push("SoC fehlt – unter „Details“ eintragen");
+  }
+  if (z.soc_quelle) zeilen.push(`SoC: ${esc(z.soc_quelle)} ${zahl(z.soc_gesetzt_wert)} % (${esc(uhr(z.soc_gesetzt))}), hochgerechnet`);
+  $("ac-plan").innerHTML = zeilen.map(t => `<div>${t}</div>`).join("");
+}
+$("ac-pause").onclick = () => {
+  const r = letzteRegelung;
+  if (!r) return;
+  if (r.modus === "aus") {
+    let vorher = "nur_pv";
+    try { vorher = localStorage.getItem("evpv-modus-vorher") || vorher; } catch (e) {}
+    parameterSenden({modus: vorher});
+  } else {
+    try { localStorage.setItem("evpv-modus-vorher", r.modus); } catch (e) {}
+    parameterSenden({modus: "aus"});
+  }
+};
+
+let heuteDiagramm = null;
+async function heuteLaden() {
+  if (!window.echarts || (location.hash && location.hash !== "#live")) return;
+  try {
+    const v = await holen("api/heute");
+    if (!v.daten) return;
+    heuteDiagramm = heuteDiagramm || echarts.init($("heute-diagramm"));
+    diagramme[3] = heuteDiagramm;
+    const i = Object.fromEntries(v.spalten.map((n, j) => [n, j]));
+    const reihe = (name, sp, farbe, flaeche) => ({name, type: "line", showSymbol: false, smooth: true,
+      data: v.daten.map(d => [d[i.zeit] * 1000, d[i[sp]] === null ? null : Math.max(d[i[sp]], 0)]),
+      lineStyle: {width: 1.5}, color: css(farbe), ...(flaeche ? {areaStyle: {opacity: .25}} : {})});
+    const a = achsen();
+    const tag = new Date(); tag.setHours(0, 0, 0, 0);
+    heuteDiagramm.setOption({
+      animation: false, grid: {left: 44, right: 8, top: 26, bottom: 22},
+      legend: {top: 0, itemWidth: 12, textStyle: {color: a.text, fontSize: 11}},
+      tooltip: a.tooltip,
+      xAxis: {...a.x, min: tag.getTime(), max: tag.getTime() + 86400e3},
+      yAxis: {...a.y, axisLabel: {...a.y.axisLabel, formatter: x => zahl(x / 1000) + " kW"}},
+      series: [reihe("PV", "pv", "--solar", true), reihe("Haus", "haus", "--verbrauch", true),
+               reihe("Auto", "auto", "--auto", true)],
+    }, true);
+    $("heute-unter").textContent = v.daten.length && v.daten[0][0] * 1000 > tag.getTime() + 600e3
+      ? "seit Add-on-Start " + new Date(v.daten[0][0] * 1000).toLocaleTimeString("de-DE", {hour: "2-digit", minute: "2-digit"})
+      : "Minutenmittel seit Mitternacht";
+  } catch (e) {}
+}
+function uhrStellen() {
+  $("uhr").textContent = new Date().toLocaleTimeString("de-DE", {hour: "2-digit", minute: "2-digit"});
+}
+
 // ── Status / Live ───────────────────────────────────────────────────────────
 async function status() {
   try {
     const s = await holen("api/status");
     const m = $("marke");
+    trackerZeigen(s.tracker);
     m.textContent = s.trockenlauf ? "Trockenlauf" : "LIVE";
     m.className = "marke " + (s.trockenlauf ? "trocken" : "live");
+    m.title = s.trockenlauf_option ? "Trockenlauf fest über die Add-on-Option (trockenlauf: true)"
+      : "Klicken zum Umschalten";
+    m.dataset.trocken = s.trockenlauf ? "1" : "";
+    m.dataset.gesperrt = s.trockenlauf_option ? "1" : "";
     $("konfig-fehler").hidden = s.konfig_ok;
     $("konfig-fehler").innerHTML = s.konfig_fehler.map(f => "<div>" + esc(f) + "</div>").join("");
 
@@ -217,6 +330,10 @@ async function status() {
       + (s.treiber.verriegelt ? " · VERRIEGELT" : "");
 
     if (location.hash === "#diagnose") diagnose(s);
+    const g = s.grenzen;
+    if (g) $("einst-grenzen").textContent = `Ladestrom ${g.min_strom_a}–${g.max_strom_a} A · einphasig höchstens ${g.strom_1ph_max_a} A`
+      + ` · Messwerte gelten bis ${g.max_alter_s} s Alter · Trockenlauf ${s.trockenlauf_option ? "fest über die Add-on-Option" : "über Kennzeichen oben schaltbar"}`;
+    autoKarte();
   } catch (e) { /* Add-on startet gerade neu */ }
 }
 
@@ -239,7 +356,8 @@ function diagnose(s) {
       <td class="zahl klein">${z.intervall_s === null ? "–" : zahl(z.intervall_s, 1) + " s (" + zahl(z.intervall_max_s, 1) + ")"}</td><td>${st}</td></tr>`;
   }).join("");
   if (s.treiber) {
-    $("verriegelt").textContent = s.treiber.verriegelt ? "VERRIEGELT: " + s.treiber.verriegelt : "";
+    $("verriegelt").textContent = s.treiber.verriegelt ? "VERRIEGELT: " + s.treiber.verriegelt
+      : s.treiber.wiederanlauf && s.treiber.wiederanlauf !== "ok" ? "Wiederanlauf: " + s.treiber.wiederanlauf : "";
     $("aktionen").innerHTML = s.treiber.aktionen.map(([z, t, e]) =>
       `<tr><td class="klein">${esc(z)}</td><td class="mono">${esc(t)}</td>
        <td class="${e === "ok" ? "ok" : e === "Trockenlauf" ? "klein" : "schlecht"}">${esc(e)}</td></tr>`).join("")
@@ -257,6 +375,8 @@ const PARAM = [
   ["start_w", "Start ab Überschuss (W)"], ["start_verz_s", "… anliegend für (s)"],
   ["stopp_w", "Stopp unter Überschuss (W)"], ["stopp_verz_s", "… anliegend für (s)"],
   ["min_ladedauer_s", "Mindestladedauer (s)"], ["min_pause_s", "Mindestpause (s)"],
+  ["wiederanlauf", "Lädt nach Pause nicht wieder an (nur Treiber ids)", "wiederanlauf_wahl"],
+  ["wiederanlauf_s", "… erkannt nach Freigabe ohne Ladung (s)"],
 ];
 let paramGeladen = false;
 async function parameterSenden(daten) {
@@ -269,8 +389,84 @@ async function parameterSenden(daten) {
 }
 $("param-speichern").onclick = () => {
   const daten = {};
-  new FormData($("param-form")).forEach((v, k) => { daten[k] = Number(v); });
+  $("param-form").querySelectorAll("input, select").forEach(e => {
+    daten[e.name] = e.tagName === "SELECT" ? e.value : Number(e.value);
+  });
   parameterSenden(daten);
+};
+
+// ── Zielzeit ────────────────────────────────────────────────────────────────
+let zzGeladen = false;
+const uhr = iso => iso ? new Date(iso).toLocaleString("de-DE", {weekday: "short", hour: "2-digit", minute: "2-digit"}) : "–";
+function pvBis(bisIso) {
+  // Erwartete PV-Erzeugung bis zur Abfahrt aus der Prognose (nur Hinweis, nicht geplant)
+  if (!prognose || !prognose.verfuegbar || !bisIso) return null;
+  const jetzt = Date.now(), bis = new Date(bisIso).getTime();
+  let wh = 0;
+  for (const h of prognose.stunden) {
+    const ende = new Date(h.zeit).getTime(), beginn = ende - 3600e3;
+    const anteil = (Math.min(ende, bis) - Math.max(beginn, jetzt)) / 3600e3;
+    if (anteil > 0) wh += h.wh * Math.min(anteil, 1);
+  }
+  return wh / 1000;
+}
+function zielzeitZeigen(r) {
+  const z = r.zielzeit, p = r.parameter, plan = z.plan;
+  $("zz-soc").textContent = z.soc === null ? "–" : zahl(z.soc) + " %";
+  $("zz-soc-quelle").textContent = z.soc === null ? (z.sensor ? "Sensor liefert noch nichts" : "beim Anstecken eintragen")
+    : `${z.soc_quelle} ${zahl(z.soc_gesetzt_wert)} % (${uhr(z.soc_gesetzt)}), hochgerechnet`;
+  $("zz-status").textContent = r.modus === "zielzeit"
+    ? (plan && plan.sofort ? "aktiv – lädt mit Netz" : "aktiv") : "Modus „Zielzeit“ wählen, um sie zu nutzen";
+  if (!zzGeladen) {
+    $("zz-ziel").value = p.ziel_soc; $("zz-abfahrt").value = p.abfahrt; $("zz-puffer").value = p.puffer_min;
+    zzGeladen = true;
+  }
+  const teile = [];
+  if (plan) {
+    teile.push(`Abfahrt ${uhr(plan.abfahrt)}`);
+    if (plan.benoetigt_kwh !== null) teile.push(`noch ${zahl(plan.benoetigt_kwh, 1)} kWh`);
+    if (plan.spaetester_start) teile.push(`spätester Netzstart ${uhr(plan.spaetester_start)}`);
+    const pv = pvBis(plan.abfahrt);
+    if (pv !== null) teile.push(`PV bis Abfahrt erwartet ≈ ${zahl(pv, 1)} kWh (Hinweis)`);
+  }
+  teile.push(`geplant mit ${zahl(z.p_plan_w / 1000, 1)} kW`);
+  $("zz-plan").innerHTML = teile.map(t => `<span>${esc(t)}</span>`).join("");
+}
+$("zz-soc-setzen").onclick = async () => {
+  const v = $("zz-soc-neu").value;
+  if (v === "") return;
+  const r = await fetch("api/auto_soc", {method: "POST", headers: {"Content-Type": "application/json"},
+                                         body: JSON.stringify({soc: Number(v)})});
+  const j = await r.json();
+  $("zz-meldung").textContent = j.ok ? "SoC übernommen" : j.fehler.join("; ");
+  $("zz-meldung").className = j.ok ? "ok" : "schlecht";
+  if (j.ok) $("zz-soc-neu").value = "";
+  regelung();
+};
+$("zz-speichern").onclick = async () => {
+  const r = await fetch("api/parameter", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ziel_soc: Number($("zz-ziel").value), abfahrt: $("zz-abfahrt").value,
+                          puffer_min: Number($("zz-puffer").value)})});
+  const j = await r.json();
+  $("zz-meldung").textContent = j.ok ? "gespeichert" : j.fehler.join("; ");
+  $("zz-meldung").className = j.ok ? "ok" : "schlecht";
+  regelung();
+};
+
+$("marke").onclick = async () => {
+  const m = $("marke");
+  if (m.dataset.gesperrt) {
+    alert("Der Trockenlauf ist in den Add-on-Optionen fest eingeschaltet (trockenlauf: true).\n"
+          + "Erst wenn die Option aus ist, lässt er sich hier oder in HA umschalten.");
+    return;
+  }
+  const an = !m.dataset.trocken;
+  if (!an && !confirm("Trockenlauf ausschalten?\nDas Add-on schreibt dann auf die Wallbox (go-e).")) return;
+  const r = await fetch("api/trockenlauf", {method: "POST", headers: {"Content-Type": "application/json"},
+                                            body: JSON.stringify({an})});
+  const j = await r.json();
+  if (!j.ok) alert(j.fehler.join("\n"));
+  status();
 };
 
 async function regelung() {
@@ -280,20 +476,39 @@ async function regelung() {
     $("treiber").textContent = "Treiber: " + r.treiber;
     $("modi").innerHTML = Object.entries(r.modi).map(([k, n]) =>
       `<button type="button" data-modus="${k}" class="${k === r.modus ? "aktiv" : ""}">${esc(n)}</button>`).join("");
-    document.querySelectorAll("#modi button").forEach(b => { b.onclick = () => parameterSenden({modus: b.dataset.modus}); });
+    $("modi-dash").innerHTML = Object.entries(r.modi).map(([k, n]) =>
+      `<button type="button" data-modus="${k}" class="${k === r.modus ? "aktiv" : ""}">${esc(n)}
+        <span class="klein" style="display:block">${esc(MODUS_TEXT[k] || "")}</span></button>`).join("");
+    document.querySelectorAll("#modi button, #modi-dash button").forEach(b => {
+      b.onclick = () => parameterSenden({modus: b.dataset.modus}); });
+    letzteRegelung = r;
+    autoKarte();
+    const gewaehlt = r.parameter.treiber;
+    $("treiber-wahl").innerHTML = Object.entries(r.treiber_wahl).map(([k, n]) =>
+      `<button type="button" data-treiber="${k}" class="${k === gewaehlt ? "aktiv" : ""}">${esc(n)}</button>`).join("");
+    document.querySelectorAll("#treiber-wahl button").forEach(b => { b.onclick = () => parameterSenden({treiber: b.dataset.treiber}); });
+    const aktivA = r.treiber.startsWith("A");
+    $("treiber-info").textContent = (aktivA !== (gewaehlt === "a") ? "Wechsel folgt, sobald nicht geladen wird · " : "")
+      + `Start ab ${zahl(Math.round(r.start_wirksam))} W, Stopp unter ${zahl(Math.round(r.stopp_wirksam))} W`;
+    $("md-info").textContent = `Start ab ${zahl(r.start_wirksam / 1000, 1)} kW Überschuss, `
+      + `Stopp unter ${zahl(r.stopp_wirksam / 1000, 1)} kW · Hausakku zuerst bis ${zahl(r.parameter.akku_soc_schwelle)} %`;
+    if (r.zielzeit) zielzeitZeigen(r);
     const a = r.ausgang;
     if (a) {
       $("k-entscheidung").innerHTML = a.freigabe ? '<span class="ok">Laden</span>' : '<span>Nicht laden</span>';
       $("k-entscheidung-box").style.setProperty("--c", a.freigabe ? "var(--ok)" : a.zustand === "pause" ? "var(--warnung)" : "var(--text-3)");
       $("k-grund").textContent = a.grund;
       $("k-erlaubt").innerHTML = wattHtml(a.p_erlaubt);
-      $("k-virtuell").textContent = "virtueller Netzwert " + watt(a.pgrid_virtuell);
+      $("k-virtuell").textContent = r.treiber.startsWith("A") ? "Treiber A stellt den Strom direkt"
+        : "virtueller Netzwert " + watt(a.pgrid_virtuell);
       $("k-verfuegbar").innerHTML = wattHtml(a.p_glatt);
       $("k-roh").textContent = "roh " + watt(a.p_roh) + " · " + (ZUSTAND[a.zustand] || a.zustand);
     }
     if (!paramGeladen) {
-      $("param-form").innerHTML = PARAM.map(([k, t]) =>
-        `<label>${esc(t)}<input type="number" step="any" name="${k}" value="${r.parameter[k]}"></label>`).join("");
+      $("param-form").innerHTML = PARAM.map(([k, t, wahl]) => wahl
+        ? `<label>${esc(t)}<select name="${k}">${Object.entries(r[wahl]).map(([w, n]) =>
+            `<option value="${w}"${w === r.parameter[k] ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`
+        : `<label>${esc(t)}<input type="number" step="any" name="${k}" value="${r.parameter[k]}"></label>`).join("");
       paramGeladen = true;
     }
   } catch (e) {}
@@ -314,7 +529,7 @@ function achsen() {
 }
 let diagramm = null;
 async function verlauf() {
-  if (!window.echarts || location.hash && location.hash !== "#live") return;
+  if (!window.echarts || location.hash !== "#bilanz") return;
   try {
     const sek = Number($("zeitraum").value);
     const v = await holen(`api/verlauf?sekunden=${sek}&schritt=${sek > 1800 ? 4 : 2}`);
@@ -354,10 +569,11 @@ async function prognoseLaden() {
   $("prognose-quelle").textContent = prognose.quelle || "";
   $("prognose-quelle").className = "marke " + (prognose.quelle === "eigenes Modell" ? "trocken" : "");
   if (prognose.quelle) $("k-prognose-unter").textContent += " · " + prognose.quelle;
+  $("tb-prognose").textContent = prognose.verfuegbar ? kwh(prognose.heute_rest_kwh) : "–";
   prognoseZeichnen();
 }
 function prognoseZeichnen() {
-  if (!window.echarts || location.hash !== "#bilanz" || !prognose) return;
+  if (!window.echarts || location.hash !== "#prognose" || !prognose) return;
   prognoseDiagramm = prognoseDiagramm || echarts.init($("prognose-diagramm"));
   diagramme[1] = prognoseDiagramm;
   const a = achsen();
@@ -403,7 +619,7 @@ async function pvLaden() {
   sauberkeitZeichnen();
 }
 function sauberkeitZeichnen() {
-  if (!window.echarts || location.hash !== "#bilanz" || !pvStatus || !pvStatus.sauberkeit_wochen) return;
+  if (!window.echarts || location.hash !== "#prognose" || !pvStatus || !pvStatus.sauberkeit_wochen) return;
   sauberDiagramm = sauberDiagramm || echarts.init($("sauberkeit-diagramm"));
   diagramme[2] = sauberDiagramm;
   const a = achsen();
@@ -440,6 +656,13 @@ async function bilanz() {
     $("h-pv-anteil").textContent = t.eto > 0.01 ? `PV-Anteil ${zahl(t.pv / t.eto * 100)} %` : "";
     $("h-ohne").textContent = t.ohne > 0 ? `davon ohne Aufteilung ${kwh(t.ohne)}` : "";
     const l = b.ladung;
+    laufendeLadung = l;
+    $("tb-auto").textContent = kwh(t.eto);
+    $("tb-pv").textContent = kwh(t.pv);
+    $("tb-akku").textContent = kwh(t.akku);
+    $("tb-netz").textContent = kwh(t.netz);
+    $("tb-anteil").textContent = t.eto > 0.01 ? zahl((t.pv + t.akku) / t.eto * 100) + " %" : "–";
+    $("tb-anteil").title = "PV + Hausakku (wie im EV Tracker)";
     $("h-ladung").innerHTML = l ? kwhHtml(l.eto) : "–";
     $("h-ladung-unter").textContent = l ? `seit ${zeit(l.start)} · PV ${kwh(l.pv)}` : "keine";
     const z = b.zaehler;
@@ -459,10 +682,32 @@ async function bilanz() {
         <span style="width:${v.netz / summe * 100}%;background:var(--netz)"></span></div>` : "";
       return `<tr><td>${zeit(v.start)}</td><td>${zeit(v.ende)}</td><td class="zahl">${kwh(v.pv)}</td>
         <td class="zahl">${kwh(v.akku)}</td><td class="zahl">${kwh(v.netz)}</td><td class="zahl">${kwh(v.eto)}</td>
-        <td>${summe > 0 ? zahl(v.pv / summe * 100) + " %" : "–"}${balken}</td><td class="klein">${esc(v.grund || "")}</td></tr>`;
-    }).join("") || '<tr><td colspan="8" class="klein">noch keine</td></tr>';
+        <td>${summe > 0 ? zahl(v.pv / summe * 100) + " %" : "–"}${balken}</td><td class="klein">${esc(v.grund || "")}</td>
+        <td class="klein">${trackerZelle(v)}</td></tr>`;
+    }).join("") || '<tr><td colspan="9" class="klein">noch keine</td></tr>';
   } catch (e) {}
 }
+function trackerZelle(v) {
+  const g = v.gesendet;
+  if (!v.ende) return "–";
+  if (!g) return '<span class="warnung">offen</span>';
+  if (/^\d{4}-/.test(g)) return '<span class="ok">✓ ' + esc(zeit(g)) + "</span>";
+  return `<span class="${g.startsWith("abgelehnt") ? "schlecht" : "klein"}">${esc(g)}</span>`;
+}
+function trackerZeigen(t) {
+  const el = $("tracker-status"), knopf = $("tracker-senden");
+  if (!t || !t.aktiv) { el.textContent = "EV Tracker: nicht eingerichtet"; knopf.hidden = true; return; }
+  el.className = t.fehler ? "schlecht" : "klein";
+  el.textContent = "EV Tracker: " + (t.fehler || (t.offen ? `${t.offen} offen` : "alles übergeben"));
+  knopf.hidden = !t.offen;
+}
+$("tracker-senden").onclick = async () => {
+  const r = await fetch("api/tracker/senden", {method: "POST"});
+  const j = await r.json();
+  if (j.tracker) trackerZeigen(j.tracker);
+  bilanz();
+};
+
 async function ereignisse() {
   try {
     const e = await holen("api/ereignisse?anzahl=60");
@@ -479,17 +724,23 @@ async function ereignisse() {
 // ── Takt ────────────────────────────────────────────────────────────────────
 function laden() {
   const s = location.hash || "#live";
-  if (s === "#live") { regelung(); verlauf(); prognoseLaden(); }
-  if (s === "#bilanz" || s === "#ladungen") { bilanz(); prognoseLaden(); pvLaden(); }
+  if (s === "#live") { regelung(); bilanz(); heuteLaden(); prognoseLaden(); }
+  if (s === "#laden" || s === "#einstellungen") { regelung(); bilanz(); prognoseLaden(); }
+  if (s === "#bilanz") { verlauf(); bilanz(); }
+  if (s === "#prognose") { prognoseLaden(); pvLaden(); }
   if (s === "#diagnose") ereignisse();
 }
+const auf = (...seiten) => seiten.includes(location.hash || "#live");
 flussAufbauen();
 seiteZeigen();
 status();
 setInterval(status, 2000);
-setInterval(() => { if (!location.hash || location.hash === "#live") regelung(); }, 2000);
-setInterval(() => { if (!location.hash || location.hash === "#live") verlauf(); }, 5000);
-setInterval(() => { if (["#bilanz", "#ladungen"].includes(location.hash)) bilanz(); }, 5000);
-setInterval(() => { if (location.hash === "#diagnose") ereignisse(); }, 10000);
+setInterval(() => { if (auf("#live", "#laden")) regelung(); }, 2000);
+setInterval(() => { if (auf("#bilanz")) verlauf(); }, 5000);
+setInterval(() => { if (auf("#live", "#laden", "#bilanz")) bilanz(); }, 5000);
+setInterval(() => { if (auf("#live")) heuteLaden(); }, 60000);
+setInterval(() => { if (auf("#diagnose")) ereignisse(); }, 10000);
 setInterval(prognoseLaden, 300000);
-setInterval(() => { if (location.hash === "#bilanz") pvLaden(); }, 60000);
+setInterval(() => { if (auf("#prognose")) pvLaden(); }, 60000);
+uhrStellen();
+setInterval(uhrStellen, 10000);

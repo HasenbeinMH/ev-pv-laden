@@ -20,12 +20,15 @@
     <span id="marke" class="marke trocken">Trockenlauf</span>
   </div>
   <nav class="reiter">
-    <a href="#live" data-seite="live"><i data-icon="activity"></i><span>Live</span></a>
-    <a href="#bilanz" data-seite="bilanz"><i data-icon="scale"></i><span>Bilanz</span></a>
-    <a href="#ladungen" data-seite="ladungen"><i data-icon="history"></i><span>Ladevorgänge</span></a>
+    <a href="#live" data-seite="live"><i data-icon="gauge"></i><span>Dashboard</span></a>
+    <a href="#laden" data-seite="laden"><i data-icon="plug"></i><span>Laden</span></a>
+    <a href="#bilanz" data-seite="bilanz"><i data-icon="chart-line"></i><span>Verlauf</span></a>
+    <a href="#prognose" data-seite="prognose"><i data-icon="sun"></i><span>Prognose</span></a>
+    <a href="#einstellungen" data-seite="einstellungen"><i data-icon="settings"></i><span>Einstellungen</span></a>
     <a href="#diagnose" data-seite="diagnose"><i data-icon="stethoscope"></i><span>Diagnose</span></a>
   </nav>
   <div class="kopf-rechts">
+    <span class="uhr" id="uhr"></span>
     <button id="theme" class="knopf-icon" type="button" title="Hell/Dunkel"></button>
   </div>
 </header>
@@ -33,12 +36,91 @@
 <main>
   <section id="konfig-fehler" class="fehler" hidden></section>
 
-  <!-- ═══ Live ═══ -->
+  <!-- ═══ Dashboard: alles auf einen Blick, ohne Scrollen ═══ -->
   <section class="seite" id="seite-live">
+    <div class="dash">
+      <div class="dash-kpi">
+        <div class="kpi" style="--c:var(--solar)"><div class="kpi-kopf"><i data-icon="sun"></i>PV</div>
+          <div class="kpi-wert" id="kp-pv">–</div><div class="kpi-unter" id="kp-pv-unter">Erzeugung jetzt</div></div>
+        <div class="kpi" style="--c:var(--verbrauch)"><div class="kpi-kopf"><i data-icon="house"></i>Haus</div>
+          <div class="kpi-wert" id="kp-haus">–</div><div class="kpi-unter" id="kp-haus-unter">Verbrauch ohne Auto</div></div>
+        <div class="kpi" id="kp-akku-box" style="--c:var(--akku)"><div class="kpi-kopf"><i data-icon="battery-charging"></i>Hausakku</div>
+          <div class="kpi-wert" id="kp-akku">–</div><div class="kpi-unter" id="kp-akku-unter"></div></div>
+        <div class="kpi" style="--c:var(--auto)"><div class="kpi-kopf"><i data-icon="car"></i>Auto</div>
+          <div class="kpi-wert" id="kp-auto">–</div><div class="kpi-unter" id="kp-auto-unter">Ladeleistung</div></div>
+      </div>
+
+      <div class="block dash-fluss">
+        <div class="block-kopf"><i data-icon="zap"></i><h2>Energiefluss</h2>
+          <span class="unter">jetzt · Linienstärke = Leistung</span></div>
+        <div class="fluss-rahmen"><svg class="fluss" id="fluss" viewBox="0 0 900 520" role="img" aria-label="Energiefluss"></svg></div>
+      </div>
+
+      <div class="block dash-auto">
+        <div class="auto-kopf"><span class="klein">AUTO</span><span class="klein" id="ac-steckt"></span></div>
+        <div class="auto-soc"><span id="ac-soc">–</span><small>%</small></div>
+        <div class="auto-balken"><span id="ac-fuell"></span><i id="ac-ziel" title="Ziel-SoC"></i></div>
+        <div class="auto-zeile"><span class="auto-leistung" id="ac-leistung">–</span>
+          <span class="klein" id="ac-geladen"></span></div>
+        <div class="auto-status" id="ac-status"><span class="punkt"></span><span id="ac-status-text">–</span></div>
+        <div class="klein" id="ac-info"></div>
+        <div class="auto-plan" id="ac-plan"></div>
+        <div class="auto-knoepfe">
+          <button type="button" id="ac-pause">Laden pausieren</button>
+          <a class="knopf" href="#laden">Details</a>
+        </div>
+      </div>
+
+      <div class="block dash-modus">
+        <div class="block-kopf"><i data-icon="plug"></i><h2>Lademodus</h2></div>
+        <div id="modi-dash" class="modus-liste"></div>
+        <div class="klein" id="md-info"></div>
+      </div>
+
+      <div class="block dash-heute">
+        <div class="heute-diagramm-rahmen">
+          <div class="block-kopf"><i data-icon="chart-line"></i><h2>Heute</h2>
+            <span class="unter" id="heute-unter">Minutenmittel seit Mitternacht</span></div>
+          <div id="heute-diagramm" class="heute-diagramm"></div>
+        </div>
+        <div class="tagesbilanz">
+          <h3>Ins Auto heute</h3>
+          <div class="tb-zeile"><span>geladen</span><b id="tb-auto">–</b></div>
+          <div class="tb-zeile"><span><i class="farbpunkt" style="background:var(--solar)"></i>aus PV</span><b id="tb-pv">–</b></div>
+          <div class="tb-zeile"><span><i class="farbpunkt" style="background:var(--akku)"></i>aus Hausakku</span><b id="tb-akku">–</b></div>
+          <div class="tb-zeile"><span><i class="farbpunkt" style="background:var(--netz)"></i>aus dem Netz</span><b id="tb-netz">–</b></div>
+          <div class="tb-zeile tb-gross"><span>PV-Anteil</span><b id="tb-anteil">–</b></div>
+          <div class="tb-zeile klein"><span>PV-Prognose Rest</span><span id="tb-prognose">–</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Laden: Modus, Zielzeit, Entscheidung, Ladevorgänge ═══ -->
+  <section class="seite" id="seite-laden">
     <div class="block">
       <div class="block-kopf"><i data-icon="plug"></i><h2>Lademodus</h2>
         <span class="unter" id="treiber"></span></div>
       <div id="modi" class="pillen"></div>
+      <div class="treiber-zeile"><span class="klein">Stellglied</span><div id="treiber-wahl" class="pillen"></div>
+        <span class="klein" id="treiber-info"></span></div>
+    </div>
+
+    <div class="block" id="zielzeit-block">
+      <div class="block-kopf"><i data-icon="clock"></i><h2>Zielzeit</h2>
+        <span class="unter" id="zz-status"></span></div>
+      <div class="zz-gitter">
+        <div class="zz-wert"><div class="titel">SoC Auto</div><div class="wert" id="zz-soc">–</div>
+          <div class="unter" id="zz-soc-quelle"></div></div>
+        <label>SoC jetzt (%)<span class="zz-eingabe"><input type="number" min="0" max="100" step="1" id="zz-soc-neu">
+          <button type="button" id="zz-soc-setzen">übernehmen</button></span></label>
+        <label>Ziel-SoC (%)<input type="number" min="10" max="100" step="5" id="zz-ziel"></label>
+        <label>Abfahrt<input type="time" id="zz-abfahrt"></label>
+        <label>Puffer (min)<input type="number" min="0" max="600" step="5" id="zz-puffer"></label>
+        <div class="zz-aktion"><button type="button" class="primaer" id="zz-speichern">Speichern</button>
+          <span id="zz-meldung" class="klein"></span></div>
+      </div>
+      <div class="zz-plan klein" id="zz-plan"></div>
     </div>
 
     <div class="kacheln" style="margin-bottom:16px">
@@ -53,11 +135,19 @@
     </div>
 
     <div class="block">
-      <div class="block-kopf"><i data-icon="zap"></i><h2>Energiefluss</h2>
-        <span class="unter">jetzt · Linienstärke = Leistung</span></div>
-      <div class="fluss-rahmen"><svg class="fluss" id="fluss" viewBox="0 0 900 520" role="img" aria-label="Energiefluss"></svg></div>
+      <div class="block-kopf"><i data-icon="history"></i><h2>Ladevorgänge</h2>
+        <span class="unter">Beginn &gt; 50 W für 1 min · Ende nach 15 min ohne Leistung oder beim Abstecken</span>
+        <div class="rechts"><span class="klein" id="tracker-status"></span>
+          <button type="button" id="tracker-senden" hidden>jetzt senden</button></div></div>
+      <div class="tabelle-rahmen"><table>
+        <thead><tr><th>Beginn</th><th>Ende</th><th class="zahl">PV</th><th class="zahl">Akku</th><th class="zahl">Netz</th>
+          <th class="zahl">Summe</th><th>PV-Anteil</th><th>Grund</th><th>EV Tracker</th></tr></thead>
+        <tbody id="vorgaenge"></tbody></table></div>
     </div>
+  </section>
 
+  <!-- ═══ Verlauf: Leistung, Bilanz ═══ -->
+  <section class="seite" id="seite-bilanz">
     <div class="block">
       <div class="block-kopf"><i data-icon="chart-line"></i><h2>Leistungsverlauf</h2>
         <span class="unter">Strategie und Messwerte</span>
@@ -65,18 +155,6 @@
           <option value="1800" selected>30 min</option><option value="3600">60 min</option></select></div></div>
       <div id="diagramm" class="diagramm"></div>
     </div>
-
-    <details class="block">
-      <summary class="block-kopf" style="margin:0"><i data-icon="settings"></i><h2>Parameter der Strategie</h2>
-        <span class="unter">Akku-Schwelle, Glättung, Start/Stopp</span></summary>
-      <form id="param-form" class="param-gitter" style="margin-top:14px"></form>
-      <div class="param-aktion"><button id="param-speichern" class="primaer" type="button">Speichern</button>
-        <span id="param-meldung" class="klein"></span></div>
-    </details>
-  </section>
-
-  <!-- ═══ Bilanz ═══ -->
-  <section class="seite" id="seite-bilanz">
     <div class="block">
       <div class="block-kopf"><i data-icon="scale"></i><h2>Heute ins Auto</h2>
         <span class="unter">aufgeteilt auf den Zähler der Wallbox</span></div>
@@ -90,26 +168,6 @@
         <div class="kachel"><div><div class="titel">Laufende Ladung</div><div class="wert" id="h-ladung">–</div><div class="unter" id="h-ladung-unter"></div></div>
           <div class="icon-box" style="--c:var(--auto)" data-icon="car"></div></div>
       </div>
-    </div>
-    <div class="block">
-      <div class="block-kopf"><i data-icon="sun"></i><h2>PV-Prognose</h2><span class="unter" id="prognose-unter"></span>
-        <div class="rechts"><span class="marke" id="prognose-quelle"></span></div></div>
-      <div id="prognose-diagramm" class="diagramm" style="height:240px"></div>
-    </div>
-    <div class="block">
-      <div class="block-kopf"><i data-icon="sun"></i><h2>PV-Anlage</h2>
-        <span class="unter" id="pv-modell-unter">eigenes Prognosemodell</span>
-        <div class="rechts"><button id="gereinigt" class="primaer" type="button">Anlage gereinigt</button></div></div>
-      <div class="kacheln" style="margin-bottom:12px">
-        <div class="kachel"><div><div class="titel">Sauberkeit</div><div class="wert" id="pv-sauberkeit">–</div>
-          <div class="unter" id="pv-sauberkeit-unter"></div></div><div class="icon-box" id="pv-sauberkeit-box" style="--c:var(--info)" data-icon="sun"></div></div>
-        <div class="kachel"><div><div class="titel">Verlust durch Schmutz</div><div class="wert" id="pv-verlust">–</div>
-          <div class="unter" id="pv-verlust-unter"></div></div><div class="icon-box" style="--c:var(--warnung)" data-icon="gauge"></div></div>
-        <div class="kachel"><div><div class="titel">Modell</div><div class="wert" id="pv-modell" style="font-size:1.1rem">–</div>
-          <div class="unter" id="pv-modell-kennzahlen"></div></div><div class="icon-box" style="--c:var(--primary)" data-icon="chart-line"></div></div>
-      </div>
-      <div id="pv-hinweis" class="hinweis"></div>
-      <div id="sauberkeit-diagramm" class="diagramm" style="height:200px"></div>
     </div>
     <div class="block">
       <div class="block-kopf"><i data-icon="list-checks"></i><h2>Tagesbilanz</h2>
@@ -126,15 +184,43 @@
     </div>
   </section>
 
-  <!-- ═══ Ladevorgänge ═══ -->
-  <section class="seite" id="seite-ladungen">
+  <!-- ═══ Prognose: PV-Prognose und Anlage ═══ -->
+  <section class="seite" id="seite-prognose">
     <div class="block">
-      <div class="block-kopf"><i data-icon="history"></i><h2>Ladevorgänge</h2>
-        <span class="unter">Beginn &gt; 50 W für 1 min · Ende nach 15 min ohne Leistung oder beim Abstecken</span></div>
-      <div class="tabelle-rahmen"><table>
-        <thead><tr><th>Beginn</th><th>Ende</th><th class="zahl">PV</th><th class="zahl">Akku</th><th class="zahl">Netz</th>
-          <th class="zahl">Summe</th><th>PV-Anteil</th><th>Grund</th></tr></thead>
-        <tbody id="vorgaenge"></tbody></table></div>
+      <div class="block-kopf"><i data-icon="sun"></i><h2>PV-Prognose</h2><span class="unter" id="prognose-unter"></span>
+        <div class="rechts"><span class="marke" id="prognose-quelle"></span></div></div>
+      <div id="prognose-diagramm" class="diagramm" style="height:260px"></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="sun"></i><h2>PV-Anlage</h2>
+        <span class="unter" id="pv-modell-unter">eigenes Prognosemodell</span>
+        <div class="rechts"><button id="gereinigt" class="primaer" type="button">Anlage gereinigt</button></div></div>
+      <div class="kacheln" style="margin-bottom:12px">
+        <div class="kachel"><div><div class="titel">Sauberkeit</div><div class="wert" id="pv-sauberkeit">–</div>
+          <div class="unter" id="pv-sauberkeit-unter"></div></div><div class="icon-box" id="pv-sauberkeit-box" style="--c:var(--info)" data-icon="sun"></div></div>
+        <div class="kachel"><div><div class="titel">Verlust durch Schmutz</div><div class="wert" id="pv-verlust">–</div>
+          <div class="unter" id="pv-verlust-unter"></div></div><div class="icon-box" style="--c:var(--warnung)" data-icon="gauge"></div></div>
+        <div class="kachel"><div><div class="titel">Modell</div><div class="wert" id="pv-modell" style="font-size:1.1rem">–</div>
+          <div class="unter" id="pv-modell-kennzahlen"></div></div><div class="icon-box" style="--c:var(--primary)" data-icon="chart-line"></div></div>
+      </div>
+      <div id="pv-hinweis" class="hinweis"></div>
+      <div id="sauberkeit-diagramm" class="diagramm" style="height:200px"></div>
+    </div>
+  </section>
+
+  <!-- ═══ Einstellungen: Parameter der Strategie ═══ -->
+  <section class="seite" id="seite-einstellungen">
+    <div class="block">
+      <div class="block-kopf"><i data-icon="settings"></i><h2>Parameter der Strategie</h2>
+        <span class="unter">Akku-Schwelle, Glättung, Start/Stopp, Wiederanlauf – gespeichert im Add-on, auch in HA einstellbar</span></div>
+      <form id="param-form" class="param-gitter"></form>
+      <div class="param-aktion"><button id="param-speichern" class="primaer" type="button">Speichern</button>
+        <span id="param-meldung" class="klein"></span></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="list-checks"></i><h2>Anlage und Grenzen</h2>
+        <span class="unter">Sensoren, Stromgrenzen, EV Tracker: Add-on → Konfiguration (Neustart nötig)</span></div>
+      <div class="klein" id="einst-grenzen"></div>
     </div>
   </section>
 

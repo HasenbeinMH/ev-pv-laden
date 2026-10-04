@@ -140,6 +140,30 @@ def test_parameter_pruefen_und_rundreise():
     assert Parameter.aus_dict(p.als_dict()) == p
 
 
+def test_parameter_treiber_und_wiederanlauf():
+    assert Parameter(treiber="b").pruefen()
+    assert Parameter(wiederanlauf="neustart").pruefen()
+    assert Parameter(wiederanlauf_s=10).pruefen()
+    p = Parameter.aus_dict({"treiber": "a", "wiederanlauf": "melden"})
+    assert (p.treiber, p.wiederanlauf) == ("a", "melden") and not p.pruefen()
+
+
+def test_treiber_a_start_erst_ab_dreiphasiger_mindestleistung():
+    """Treiber A fest dreiphasig: 3 x 6 A x 230 V = 4140 W; Hysterese bleibt 300 W."""
+    s = Strategie(Parameter(tau_s=0, start_verz_s=0, stopp_verz_s=0, min_ladedauer_s=0), 3 * P_MIN, P_MAX)
+    assert (s.start_wirksam(), s.stopp_wirksam()) == (4140, 3840)
+    assert s.schritt(e(0, netz=-3000)).freigabe is False          # wuerde bei ids starten
+    a = s.schritt(e(1, netz=-4200))
+    assert a.freigabe and a.p_erlaubt == 4200
+    assert s.schritt(e(2, p_auto=4200, netz=300)).freigabe        # 3900 W > Stopp 3840 W
+    assert s.schritt(e(3, p_auto=4200, netz=500)).freigabe is False
+
+
+def test_ids_schwellen_unveraendert():
+    s = strat()
+    assert (s.start_wirksam(), s.stopp_wirksam()) == (1400, 1100)
+
+
 # --- Szenarien im Anlagenmodell ------------------------------------------------------------
 
 def stunden(h, w):

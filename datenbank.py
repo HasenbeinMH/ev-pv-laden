@@ -204,6 +204,20 @@ def vorgaenge(anzahl: int = 50, pfad: str | None = None) -> list[dict]:
             "FROM ladevorgaenge ORDER BY id DESC LIMIT ?", (anzahl,))]
 
 
+def vorgaenge_ungesendet(pfad: str | None = None) -> list[dict]:
+    """Beendete Vorgaenge, die noch nicht an den EV Tracker uebergeben sind (aeltester zuerst)."""
+    with verbindung(pfad) as con:
+        return [dict(r) for r in con.execute(
+            "SELECT id, start, ende, pv, akku, netz, ohne, eto FROM ladevorgaenge "
+            "WHERE ende IS NOT NULL AND gesendet IS NULL ORDER BY id")]
+
+
+def vorgang_gesendet(vid: int, vermerk: str, pfad: str | None = None) -> None:
+    """vermerk: Zeitpunkt der Uebergabe oder 'abgelehnt: …' / 'nicht gesendet: …'."""
+    with verbindung(pfad) as con:
+        con.execute("UPDATE ladevorgaenge SET gesendet=? WHERE id=?", (vermerk, vid))
+
+
 def ereignisse(anzahl: int = 100, pfad: str | None = None) -> list[dict]:
     with verbindung(pfad) as con:
         zeilen = con.execute("SELECT zeit, ebene, quelle, text FROM ereignisse "

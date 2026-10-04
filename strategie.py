@@ -14,15 +14,22 @@ Interne Konvention: Netz Bezug +, Akku Entladung +.
    Unterstuetzung = "Akku darf Auto mit max. X W unterstuetzen oberhalb SoC Y" (Standard 0).
 2. Glaettung PT1 (Zeitkonstante tau).
 3. Start/Stopp mit Hysterese, Verzoegerungen, Mindestladedauer und Mindestpause.
-4. Modi: Aus, Nur PV, Min + PV, Sofort (Zielzeit folgt in M7).
+4. Modi: Aus, Nur PV, Min + PV, Sofort; Zielzeit plant zielzeit.py und ruft die Strategie
+   mit dem wirksamen Modus (Nur PV bzw. Sofort) auf.
 5. Sicherheit: Messwert ungueltig/veraltet -> kein Ueberschuss, Stopp ohne Verzoegerung
    (Min + PV: Mindestleistung). Grenzen: P_erlaubt nie ueber P_max.
 """
 from dataclasses import asdict, dataclass, fields
 
+from zielzeit import UHRZEIT
+
 # Modi
 AUS, NUR_PV, MIN_PV, SOFORT, ZIELZEIT = "aus", "nur_pv", "min_pv", "sofort", "zielzeit"
 MODI = {AUS: "Aus", NUR_PV: "Nur PV", MIN_PV: "Min + PV", SOFORT: "Sofort", ZIELZEIT: "Zielzeit"}
+
+TREIBER = {"ids": "ids (go-e regelt)", "a": "A (Add-on stellt Strom, dreiphasig)"}
+WIEDERANLAUF = {"melden": "nur melden", "fup": "fup kurz umschalten",
+                "fup_dann_a": "fup umschalten, dann Treiber A"}
 
 SPANNUNG_V = 230.0
 
@@ -41,6 +48,12 @@ class Parameter:
     stopp_verz_s: float = 180.0         # ... so lange anliegt
     min_ladedauer_s: float = 600.0
     min_pause_s: float = 300.0
+    treiber: str = "ids"                # Stellglied: "ids" (go-e regelt) oder "a" (Add-on stellt amp)
+    wiederanlauf: str = "fup_dann_a"    # Massnahme, wenn die Ladung nach einer Pause nicht anlaeuft
+    wiederanlauf_s: float = 300.0       # ... nach so langer Freigabe ohne Ladung
+    ziel_soc: float = 80.0              # Zielzeit: Ziel-SoC des Autos (%) ...
+    abfahrt: str = "07:00"              # ... zur naechsten Abfahrt um diese Uhrzeit
+    puffer_min: float = 30.0            # ... mit so viel Reserve vor der Abfahrt
 
     def pruefen(self) -> list[str]:
         f = []
@@ -56,6 +69,18 @@ class Parameter:
             f.append("Zeitkonstante muss zwischen 0 und 600 s liegen")
         if not 0 < self.stopp_w <= self.start_w:
             f.append("Stopp-Schwelle muss größer 0 und höchstens die Start-Schwelle sein")
+        if self.treiber not in TREIBER:
+            f.append(f"Treiber '{self.treiber}' unbekannt")
+        if self.wiederanlauf not in WIEDERANLAUF:
+            f.append(f"Wiederanlauf-Maßnahme '{self.wiederanlauf}' unbekannt")
+        if not 60 <= self.wiederanlauf_s <= 3600:
+            f.append("Wiederanlauf-Wartezeit muss zwischen 60 und 3600 s liegen")
+        if not 10 <= self.ziel_soc <= 100:
+            f.append("Ziel-SoC muss zwischen 10 und 100 % liegen")
+        if not UHRZEIT.match(str(self.abfahrt)):
+            f.append(f"Abfahrt '{self.abfahrt}' ungültig (HH:MM)")
+        if not 0 <= self.puffer_min <= 600:
+            f.append("Puffer muss zwischen 0 und 600 min liegen")
         for name in ("start_verz_s", "stopp_verz_s", "min_ladedauer_s", "min_pause_s"):
             if not 0 <= getattr(self, name) <= 7200:
                 f.append(f"{name} muss zwischen 0 und 7200 s liegen")
@@ -161,20 +186,31 @@ class Strategie:
         self._stoppen(t)
         return Ausgang(False, 0.0, roh, glatt, zustand, grund)
 
+    def start_wirksam(self) -> float:
+        """Start nie unter der kleinsten Ladeleistung (Treiber A dreiphasig: 4,1 kW)."""
+        return max(self.param.start_w, self.p_min)
+
+    def stopp_wirksam(self) -> float:
+        """Stopp-Schwelle mit derselben Hysterese unter dem wirksamen Start."""
+        p = self.param
+        return max(p.stopp_w, self.start_wirksam() - (p.start_w - p.stopp_w))
+
     def _begrenzen(self, p: float) -> float:
         return min(max(p, self.p_min), self.p_max)
 
     # -- Zyklus -------------------------------------------------------------------------
-    def schritt(self, e: Eingang) -> Ausgang:
+    def schritt(self, e: Eingang, modus: str | None = None) -> Ausgang:
+        """modus: wirksamer Modus, falls abweichend vom Parameter (Zielzeit -> Nur PV/Sofort)."""
         p, t = self.param, e.t
-        if p.modus == AUS:
+        modus = modus or p.modus
+        if modus == AUS:
             self._glatt = None
             return self._aus(t, "Modus Aus")
         if e.steckt is not True:
             self._glatt = None
             return self._aus(t, "kein Fahrzeug angesteckt" if e.steckt is False
                              else "Fahrzeugstatus unbekannt")
-        if p.modus == SOFORT:
+        if modus == SOFORT:
             if not self.laedt:
                 self._starten(t)
             return Ausgang(True, self.p_max, None, None, "laedt", "Modus Sofort")
@@ -183,7 +219,7 @@ class Strategie:
         if roh is None:
             # Watchdog: kein gueltiger Messwert = kein Ueberschuss, ohne Verzoegerung
             self._glatt, self._t_letzt = None, None
-            if p.modus == MIN_PV:
+            if modus == MIN_PV:
                 if not self.laedt:
                     self._starten(t)
                 return Ausgang(True, self.p_min, None, None, "laedt",
@@ -192,26 +228,27 @@ class Strategie:
 
         glatt = self._pt1(t, roh)
 
-        if p.modus == MIN_PV:
+        if modus == MIN_PV:
             if not self.laedt:
                 self._starten(t)
             erlaubt = self._begrenzen(glatt)
             grund = "Min + PV: Mindestleistung" if glatt <= self.p_min else "Min + PV: Überschuss"
             return Ausgang(True, erlaubt, roh, glatt, "laedt", grund)
 
-        # NUR_PV (und ZIELZEIT bis M7)
+        # NUR_PV
+        start_w, stopp_w = self.start_wirksam(), self.stopp_wirksam()
         if self.laedt:
-            if glatt < p.stopp_w:
+            if glatt < stopp_w:
                 self._seit_bedingung = self._seit_bedingung if self._seit_bedingung is not None else t
                 gelaufen = t - self._laden_seit
                 gewartet = t - self._seit_bedingung
                 if gewartet >= p.stopp_verz_s and gelaufen >= p.min_ladedauer_s:
                     self._stoppen(t)
                     return Ausgang(False, 0.0, roh, glatt, "pause",
-                                   f"gestoppt: Überschuss {glatt:.0f} W < {p.stopp_w:.0f} W")
+                                   f"gestoppt: Überschuss {glatt:.0f} W < {stopp_w:.0f} W")
                 rest = max(p.stopp_verz_s - gewartet, p.min_ladedauer_s - gelaufen)
                 return Ausgang(True, self._begrenzen(glatt), roh, glatt, "stoppt",
-                               f"Überschuss {glatt:.0f} W < {p.stopp_w:.0f} W – Stopp in {rest:.0f} s")
+                               f"Überschuss {glatt:.0f} W < {stopp_w:.0f} W – Stopp in {rest:.0f} s")
             self._seit_bedingung = None
             return Ausgang(True, self._begrenzen(glatt), roh, glatt, "laedt",
                            f"PV-Überschuss {glatt:.0f} W")
@@ -221,7 +258,7 @@ class Strategie:
             self._seit_bedingung = None
             rest = p.min_pause_s - (t - self._pause_seit)
             return Ausgang(False, 0.0, roh, glatt, "pause", f"Mindestpause – noch {rest:.0f} s")
-        if glatt >= p.start_w:
+        if glatt >= start_w:
             self._seit_bedingung = self._seit_bedingung if self._seit_bedingung is not None else t
             gewartet = t - self._seit_bedingung
             if gewartet >= p.start_verz_s:
@@ -232,4 +269,4 @@ class Strategie:
                            f"Überschuss {glatt:.0f} W – Start in {p.start_verz_s - gewartet:.0f} s")
         self._seit_bedingung = None
         return Ausgang(False, 0.0, roh, glatt, "bereit",
-                       f"Überschuss {glatt:.0f} W < Start {p.start_w:.0f} W")
+                       f"Überschuss {glatt:.0f} W < Start {start_w:.0f} W")

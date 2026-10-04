@@ -41,16 +41,19 @@ class Wallbox:
     umschalt_w: float = 4200.0     # spl3 der go-e
     stufen_s: float = 5.0
     p_ist: float = 0.0
+    phasen: int = 1
     _t_stufe: float = -1e9
 
-    def nachfuehren(self, t: float, freigabe: bool, p_soll: float) -> float:
+    def nachfuehren(self, t: float, freigabe: bool, p_soll: float, fest_3ph: bool = False) -> float:
+        """fest_3ph: Treiber A (psm=2) – keine Umschaltung auf eine Phase."""
         if not freigabe or p_soll <= 0:
             self.p_ist = 0.0
             return 0.0
         if t - self._t_stufe < self.stufen_s:
             return self.p_ist
         self._t_stufe = t
-        if p_soll <= self.umschalt_w:
+        self.phasen = 3 if fest_3ph or p_soll > self.umschalt_w else 1
+        if self.phasen == 1:
             strom = min(max(math.floor(p_soll / U), self.min_a), self.max_a_1ph)
             self.p_ist = strom * U
         else:
@@ -139,7 +142,8 @@ class LiveSimulator:
         self.t0 = mono if self.t0 is None else self.t0
         t = mono - self.t0
         a = self.reg.aus
-        p_auto = self.wb.nachfuehren(t, bool(a and a.freigabe), a.p_erlaubt if a else 0.0)
+        p_auto = self.wb.nachfuehren(t, bool(a and a.freigabe), a.p_erlaubt if a else 0.0,
+                                     fest_3ph=self.reg.treiber.startswith("A"))
         rest = self.ueberschuss(t) - p_auto
         if rest >= 0:
             laden = min(rest, self.akku.max_laden_w) if self.akku.soc < 100 else 0.0
@@ -162,7 +166,7 @@ class LiveSimulator:
              f"sensor.{g}_eto": z(round(self.eto, 3), "kWh"),
              f"binary_sensor.{g}_car_0": z("on"),
              f"number.{g}_ama": z(k.max_strom_a, "A")}
-        dreiphasig = p_auto > self.wb.umschalt_w
+        dreiphasig = self.wb.phasen == 3
         strom = p_auto / (3 * U) if dreiphasig else p_auto / U
         for n in (1, 2, 3):
             w[f"sensor.{g}_nrg_{n + 3}"] = z(round(strom if (dreiphasig or n == 1) else 0.0, 1), "A")

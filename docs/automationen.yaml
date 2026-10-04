@@ -1,0 +1,80 @@
+# EV PV-Laden – Automationen für Home Assistant (Vorlage, M8)
+#
+# Einfügen: Einstellungen → Automationen → Neue Automation → ⋮ → „In YAML bearbeiten“,
+# je Automation einen Block (ohne den Listenstrich) einfügen und speichern.
+# Seriennummer der go-e (hier 325656) ggf. anpassen.
+#
+# Telegram wie bei den vorhandenen NC-Automationen: telegram_bot.send_message an den
+# Standard-Chat. Mit einem anderen Dienst: nur die Aktion „Benachrichtigen“ tauschen.
+
+# ── 1. Watchdog ─────────────────────────────────────────────────────────────────────────────
+# Das Add-on sendet alle 10 s ein Lebenszeichen. Bleibt es 2 min aus oder ist das Add-on
+# nicht erreichbar (MQTT-Testament), während die Wallbox lädt, sperrt HA die Ladung (frc=1)
+# und meldet es. Wichtig vor allem für Treiber A – dort hat die go-e keinen eigenen Watchdog.
+# Bei Treiber ids stoppt die go-e nach ~5 s selbst; die Sperre schadet dort nicht: Startet das
+# Add-on wieder, stellt es frc=0 selbst zurück (Sollkonfiguration).
+- alias: "EV PV-Laden: Watchdog"
+  description: "Sperrt die Ladung, wenn das Add-on EV PV-Laden kein Lebenszeichen mehr sendet"
+  mode: single
+  triggers:
+    - trigger: state
+      entity_id: sensor.ev_pv_laden_lebenszeichen
+      to: "unavailable"
+      for: "00:01:00"
+      id: offline
+    # Lebenszeichen älter als 120 s (Template-Trigger mit now() wird jede Minute geprüft)
+    - trigger: template
+      value_template: >-
+        {% set t = as_datetime(states('sensor.ev_pv_laden_lebenszeichen')) %}
+        {{ t is not none and (now() - t).total_seconds() > 120 }}
+      id: veraltet
+  conditions:
+    - condition: numeric_state
+      entity_id: sensor.goe_325656_nrg_11
+      above: 100
+  actions:
+    - action: select.select_option
+      target:
+        entity_id: select.goe_325656_frc
+      data:
+        option: "1"
+    - action: telegram_bot.send_message
+      data:
+        parse_mode: plain_text
+        message: >-
+          ⚠️ EV PV-Laden antwortet nicht
+          ({{ 'nicht erreichbar' if trigger.id == 'offline' else 'kein Lebenszeichen seit 2 min' }}).
+          Die Ladung wurde gesperrt (frc=1). Add-on prüfen – nach dem Neustart gibt es die
+          Ladung selbst wieder frei.
+
+# ── 2. Auto fertig geladen / Ziel-SoC erreicht ─────────────────────────────────────────────
+# Das Add-on meldet einmal je Ansteckvorgang über event.ev_pv_laden_ladung:
+#   fertig         Fahrzeug meldet „Ladung beendet“, nachdem geladen wurde
+#   ziel_erreicht  Zielzeit: Ziel-SoC erreicht
+# Attribute: kwh, kwh_pv (inkl. Hausakku), kwh_netz, pv_anteil, soc, ziel_soc, start
+- alias: "EV PV-Laden: Ladung fertig"
+  description: "Telegram, wenn das Auto fertig geladen hat oder der Ziel-SoC erreicht ist"
+  mode: queued
+  triggers:
+    - trigger: state
+      entity_id: event.ev_pv_laden_ladung
+      not_from: "unavailable"
+  conditions:
+    - condition: template
+      value_template: "{{ trigger.to_state.attributes.event_type in ['fertig', 'ziel_erreicht'] }}"
+  actions:
+    - variables:
+        a: "{{ trigger.to_state.attributes }}"
+        kopf: >-
+          {{ '🔋 Auto fertig geladen' if a.event_type == 'fertig'
+             else '🎯 Ziel-SoC ' ~ (a.ziel_soc | int) ~ ' % erreicht' }}
+    - action: telegram_bot.send_message
+      data:
+        parse_mode: plain_text
+        message: >-
+          {{ kopf }}
+          {%- if a.kwh is defined and a.kwh is not none %}:
+          {{ '%.1f' | format(a.kwh) | replace('.', ',') }} kWh geladen
+          {%- if a.pv_anteil is not none %}, davon {{ a.pv_anteil }} % Sonne{% endif %}
+          {%- endif %}
+          {%- if a.soc is not none %} · SoC ≈ {{ a.soc }} %{% endif %}

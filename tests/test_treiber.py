@@ -1,6 +1,6 @@
 from konfig import Konfig
 from strategie import AUS, MIN_PV, NUR_PV, SOFORT, Ausgang
-from treiber import IDS_TAKT_S, NACHSTELLEN_S, UEBERSTROM_S, TreiberIds
+from treiber import AMP_TAKT_S, FUP_AUS_S, IDS_TAKT_S, NACHSTELLEN_S, UEBERSTROM_S, TreiberA, TreiberIds
 
 K = Konfig(goe_seriennummer="325656", max_strom_a=24, ev_max_strom_1ph_a=16)
 FREI = Ausgang(True, 3000.0, 3000.0, 3000.0, "laedt", "test")
@@ -94,3 +94,81 @@ def test_sollwert_erreicht_keine_aktion():
     t = TreiberIds(K)
     w = dict(EVCC_REST, goe_amp=24.0, auto_i1=10.0, auto_i2=10.0, auto_i3=10.0)
     assert not [a for a in t.zyklus(0.0, NUR_PV, FREI, 0.0, w) if a.text.startswith("amp")]
+
+
+# --- Wiederanlauf: fup kurz umschalten ------------------------------------------------------
+
+def test_fup_toggeln_schaltet_nach_kurzer_zeit_wieder_ein():
+    t = TreiberIds(K)
+    w = dict(EVCC_REST, goe_lmo="4", goe_frc="0", goe_frm="2", goe_amp=16.0)
+    t.zyklus(0.0, NUR_PV, FREI, 0.0, w)
+    assert texte(t.fup_toggeln(100.0)) == ["fup=aus (Wiederanlauf: kurz umschalten)"]
+    aus = dict(w, goe_fup=False)
+    assert not [a for a in t.zyklus(100.0 + FUP_AUS_S - 1, NUR_PV, FREI, None, aus) if a.text.startswith("fup")]
+    assert [a for a in t.zyklus(100.0 + FUP_AUS_S, NUR_PV, FREI, None, aus) if a.text.startswith("fup=an")]
+
+
+# --- Treiber A ------------------------------------------------------------------------------
+
+A_SOLL = dict(EVCC_REST, goe_lmo="3", goe_frc="0", goe_fup=False, goe_psm="2", goe_amp=6.0)
+
+
+def frei(p):
+    return Ausgang(True, p, p, p, "laedt", "test")
+
+
+def test_a_sollkonfiguration_und_start():
+    t = TreiberA(K)
+    tx = texte(t.zyklus(0.0, NUR_PV, frei(5000), None, dict(EVCC_REST, goe_lmo="4", goe_psm="0")))
+    assert "lmo=3 (Treiber A: Standardmodus)" in tx
+    assert "fup=aus (Treiber A: go-e-PV-Logik aus)" in tx
+    assert "psm=2 (Treiber A: fest dreiphasig)" in tx
+    assert "frc=0 (Laden)" in tx
+    assert "amp=7 A (P_erlaubt 5000 W)" in tx       # 5000 / 690 = 7,2 -> abgerundet
+    assert not any(a.domain == "goecharger_api2" for a in t.zyklus(1.0, NUR_PV, frei(5000), -9, dict(EVCC_REST)))
+
+
+def test_a_stopp_ueber_frc():
+    t = TreiberA(K)
+    akt = t.zyklus(0.0, NUR_PV, Ausgang(False, 0, 100, 100, "bereit", "x"), None, dict(A_SOLL))
+    assert texte(akt) == ["frc=1 (Stopp)"]
+
+
+def test_a_strom_grenzen():
+    t = TreiberA(K)
+    drei = dict(A_SOLL, auto_i1=8.0, auto_i2=8.0, auto_i3=8.0)
+    assert t.amp_aus_leistung(1000, drei) == 6                   # nie unter Mindeststrom
+    assert t.amp_aus_leistung(16560, drei) == 24                 # 24 A dreiphasig
+    assert t.amp_aus_leistung(16560, dict(A_SOLL)) == 16         # Phasen unbekannt: einphasig
+    assert t.amp_aus_leistung(16560, dict(A_SOLL, auto_i1=8.0)) == 16   # Auto laedt einphasig
+
+
+def test_a_strom_hoechstens_alle_10_s():
+    t = TreiberA(K)
+    drei = dict(A_SOLL, auto_i1=8.0, auto_i2=8.0, auto_i3=8.0)
+    assert texte(t.zyklus(0.0, NUR_PV, frei(5520), None, drei)) == ["amp=8 A (P_erlaubt 5520 W)"]
+    w = dict(drei, goe_amp=8.0)
+    assert t.zyklus(5.0, NUR_PV, frei(6900), None, w) == []           # 10 A, aber Takt laeuft
+    assert texte(t.zyklus(AMP_TAKT_S, NUR_PV, frei(6900), None, w)) == ["amp=10 A (P_erlaubt 6900 W)"]
+    assert t.zyklus(AMP_TAKT_S + 1, NUR_PV, frei(6900), None, dict(drei, goe_amp=10.0)) == []
+
+
+def test_a_ueber_grenze_sofort_korrigiert():
+    t = TreiberA(K)
+    t.zyklus(0.0, NUR_PV, frei(4140), None, dict(A_SOLL))             # amp=6 geschrieben
+    akt = t.zyklus(1.0, NUR_PV, frei(4140), None, dict(A_SOLL, goe_amp=24.0))   # App: 24 A, einphasig unbekannt
+    assert texte(akt) == ["amp=6 A (P_erlaubt 4140 W)"]
+
+
+def test_a_sicherer_halt_und_ids_ohne():
+    assert texte(TreiberA(K).sicherer_halt()) == ["frc=1 (Add-on beendet – Treiber A sperrt)"]
+    assert TreiberIds(K).sicherer_halt() == []
+
+
+def test_a_aus_und_verriegelung_wie_ids():
+    t = TreiberA(K)
+    assert texte(t.zyklus(0.0, AUS, Ausgang(False, 0, None, None, "bereit", ""), None, dict(A_SOLL)))         == ["frc=1 (Modus Aus)"]
+    w = dict(A_SOLL, goe_amp=16.0, auto_i1=18.5)
+    t.zyklus(1.0, NUR_PV, frei(5000), None, w)
+    akt = t.zyklus(1.0 + UEBERSTROM_S, NUR_PV, frei(5000), None, w)
+    assert t.verriegelt and texte(akt)[0].startswith("frc=1 (verriegelt")

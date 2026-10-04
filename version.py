@@ -8,9 +8,57 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.6.1"
+VERSION = "0.10.0"
 
 CHANGELOG = [
+    {
+        "version": "0.10.0",
+        "datum": "2026-10-04",
+        "titel": "Uebergabe an den EV Tracker",
+        "aenderungen": [
+            "Beendete Ladevorgaenge gehen automatisch an den EV Tracker (POST /api/ladung mit Token): Start, Ende, kWh PV und Netz",
+            "Hausakku zaehlt als PV (akku_als_netz: false) oder Netz; Kosten rechnet der Tracker mit seinem Tagestarif",
+            "Sendepuffer: nicht erreichbar oder falscher Token -> spaeter erneut; vom Tracker abgelehnt -> vermerkt, kein Wiederholen",
+            "Neue Option ev_tracker_fahrzeug; Spalte EV Tracker und Knopf 'jetzt senden' bei den Ladevorgaengen",
+            "Energiefluss mit zentralem Netzknoten; Haus als eigene Kachel",
+            "Neues Dashboard ohne Scrollen; Reiter Dashboard/Laden/Verlauf/Prognose/Einstellungen/Diagnose",
+        ],
+    },
+    {
+        "version": "0.9.0",
+        "datum": "2026-10-04",
+        "titel": "Bedienung aus HA, Trockenlauf-Schalter, Meldungen",
+        "aenderungen": [
+            "HA-Entitaeten zum Bedienen: Lademodus, Treiber, Trockenlauf, Hausakku-Schwelle, SoC Auto, Ziel-SoC, Abfahrt, Puffer",
+            "Trockenlauf in zwei Stufen: Add-on-Option sperrt fest; ist sie aus, schaltet Oberflaeche oder HA (Anfangswert an)",
+            "Ereignis event.ev_pv_laden_ladung: Auto fertig geladen / Ziel-SoC erreicht, mit kWh und PV-Anteil",
+            "Vorlagen fuer Watchdog- und Telegram-Automation (docs/automationen.yaml)",
+        ],
+    },
+    {
+        "version": "0.8.0",
+        "datum": "2026-10-04",
+        "titel": "Zielzeit / Ziel-SoC",
+        "aenderungen": [
+            "Modus Zielzeit: bis zum spaetesten Start nur PV, danach Netzladen bis zum Ziel-SoC (selbsthaltend bis Ziel oder Abstecken)",
+            "Spaetester Start = Abfahrt - benoetigte kWh / P_max - Puffer; P_max = min(Auto, Wallbox-Grenze)",
+            "SoC des Autos: Eingabe in der Oberflaeche oder Sensor, Hochrechnung mit dem Wallbox-Zaehler; verfaellt beim Abstecken",
+            "Ohne SoC laedt Zielzeit nur mit PV und meldet den Grund",
+            "Neue Optionen ev_max_leistung_kw (22) und sensor_auto_soc; neue HA-Sensoren SoC Auto und spaetester Netzstart",
+        ],
+    },
+    {
+        "version": "0.7.0",
+        "datum": "2026-10-04",
+        "titel": "Treiber A und Wiederanlauf-Erkennung",
+        "aenderungen": [
+            "Treiber A als Ausweich: das Add-on stellt den Ladestrom selbst (Standardmodus, fest dreiphasig, Start/Stopp ueber frc); Start erst ab 3 x 6 A",
+            "Treiberwahl in der Oberflaeche (ids / A), gewechselt wird nur, wenn nicht geladen wird",
+            "Wiederanlauf-Erkennung (ids): Freigabe, Auto steckt, laedt aber nicht -> melden, fup kurz umschalten oder bis zum Abstecken auf Treiber A",
+            "Treiber A sperrt die Ladung beim Beenden des Add-ons (kein go-e-Watchdog wie bei ids)",
+            "go-e-Status aus der Klartext-Entity (modelstatus_value), neu: Fahrzeugstatus (car_value)",
+        ],
+    },
     {
         "version": "0.6.1",
         "datum": "2026-10-04",

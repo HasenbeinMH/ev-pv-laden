@@ -55,9 +55,15 @@ class Konfig:
     ev_max_strom_1ph_a: int = 16
     min_strom_a: int = GRENZE_MIN_STROM_A
     akku_kapazitaet_kwh: float = 58.3
+    # Hoechste AC-Ladeleistung des Autos (EV3: 22 kW); geplant wird mit min(Auto, Wallbox)
+    ev_max_leistung_kw: float = 22.0
+    # SoC des Autos aus HA (optional, z. B. Hersteller-Integration); sonst Eingabe in der Oberflaeche
+    sensor_auto_soc: str = ""
     ladewirkungsgrad: float = 0.9
     ev_tracker_url: str = ""
     ev_tracker_token: str = ""
+    # Fahrzeug im EV Tracker (id oder Name); leer = Hauptfahrzeug
+    ev_tracker_fahrzeug: str = ""
     akku_als_netz: bool = False
     # PV-Prognose (eigenes Modell): Dachflaechen und Quelle der gemessenen PV-Erzeugung
     pv_flaechen: list = field(default_factory=list)
@@ -90,7 +96,8 @@ def pruefen(k: Konfig) -> list[str]:
     f = []
     if not k.sensor_netz or not _ENTITY.match(k.sensor_netz):
         f.append(f"sensor_netz ungueltig: '{k.sensor_netz}'")
-    for name in ("sensor_akku_leistung", "sensor_akku_soc", "sensor_pv", "sensor_lebenszeichen", "sensor_haus"):
+    for name in ("sensor_akku_leistung", "sensor_akku_soc", "sensor_pv", "sensor_lebenszeichen", "sensor_haus",
+                 "sensor_auto_soc"):
         wert = getattr(k, name)
         if wert and not _ENTITY.match(wert):
             f.append(f"{name} ungueltig: '{wert}'")
@@ -109,6 +116,8 @@ def pruefen(k: Konfig) -> list[str]:
         f.append(f"max_alter_s={k.max_alter_s} ausserhalb 5..300 s")
     if not 10 <= k.akku_kapazitaet_kwh <= 200:
         f.append(f"akku_kapazitaet_kwh={k.akku_kapazitaet_kwh} unplausibel")
+    if not 1 <= k.ev_max_leistung_kw <= 350:
+        f.append(f"ev_max_leistung_kw={k.ev_max_leistung_kw} unplausibel")
     if not 0.5 <= k.ladewirkungsgrad <= 1:
         f.append(f"ladewirkungsgrad={k.ladewirkungsgrad} ausserhalb 0,5..1")
     if k.log_level not in ("debug", "info", "warning", "error"):

@@ -64,6 +64,10 @@ def signale(k: Konfig) -> list[Signal]:
     if k.sensor_haus:
         liste.append(Signal("haus_w", k.sensor_haus, LEISTUNG, "Hausverbrauch", pflicht=False,
                             lebenszeichen=mess))
+    if k.sensor_auto_soc:
+        # Aendert sich selten (Hersteller-Cloud): Alter wird hier nicht ueberwacht,
+        # die Zielzeit rechnet ab dem letzten neuen Wert mit dem Wallbox-Zaehler hoch
+        liste.append(Signal("auto_soc", k.sensor_auto_soc, PROZENT, "SoC Auto", pflicht=False))
     if k.sensor_lebenszeichen:
         liste.append(Signal("lebenszeichen", k.sensor_lebenszeichen, TEXT,
                             "Lebenszeichen Messgeraet", pflicht=False))
@@ -81,7 +85,9 @@ def signale(k: Konfig) -> list[Signal]:
         goe("goe_eto", f"sensor.{g}_eto", ENERGIE, "Energiezaehler Wallbox"),
         goe("goe_wh", f"sensor.{g}_wh", ENERGIE, "Energie seit Anstecken", pflicht=False),
         goe("auto_steckt", f"binary_sensor.{g}_car_0", BINAER, "Fahrzeug verbunden"),
-        goe("goe_status", f"sensor.{g}_modelstatus", TEXT, "go-e Grund (modelStatus)", pflicht=False),
+        # _value: Klartext; die Code-Entity (sensor.goe_..._modelstatus) ist ab Werk deaktiviert
+        goe("goe_status", f"sensor.{g}_modelstatus_value", TEXT, "go-e Grund (modelStatus)", pflicht=False),
+        goe("auto_status", f"sensor.{g}_car_value", TEXT, "Fahrzeugstatus (car)", pflicht=False),
         goe("goe_ama", f"number.{g}_ama", STROM, "go-e Max. Stromlimit (ama)"),
         goe("goe_amp", f"number.{g}_amp", STROM, "go-e Angeforderter Strom (amp)"),
         goe("goe_lmo", f"select.{g}_lmo", TEXT, "go-e Logik/Modus (lmo)", pflicht=False),

@@ -5,7 +5,7 @@
 # Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
 # Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
 name: EV PV-Laden
-version: "0.6.1"
+version: "0.10.0"
 slug: ev_pv_laden
 description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
 url: "https://github.com/HasenbeinMH/ev-pv-laden"
@@ -24,7 +24,8 @@ services:
   - mqtt:need
 watchdog: "tcp://[HOST]:[PORT:8099]"
 options:
-  # Pflicht vor jedem Live-Betrieb: liest und rechnet, schreibt aber nichts auf die Wallbox
+  # Pflicht vor jedem Live-Betrieb: liest und rechnet, schreibt aber nichts auf die Wallbox.
+  # true sperrt fest; erst bei false laesst sich der Trockenlauf in Oberflaeche/HA abschalten
   trockenlauf: true
   log_level: info
   # Messwerte (interne Konvention: Netzbezug +, Einspeisung -, Akku-Entladung +, Akku-Ladung -)
@@ -53,9 +54,15 @@ options:
   # Auto
   akku_kapazitaet_kwh: 58.3
   ladewirkungsgrad: 0.9
+  # Hoechste AC-Ladeleistung des Autos; die Zielzeit plant mit min(Auto, Wallbox-Grenze)
+  ev_max_leistung_kw: 22
+  # SoC des Autos aus HA (optional); ohne Sensor wird er in der Oberflaeche eingetragen
+  sensor_auto_soc: ""
   # EV Tracker (optional): Adresse und Token aus EV Tracker -> Einstellungen
   ev_tracker_url: ""
   ev_tracker_token: ""
+  # Fahrzeug im EV Tracker (Nummer oder Name); leer = Hauptfahrzeug
+  ev_tracker_fahrzeug: ""
   akku_als_netz: false
   # PV-Prognose (eigenes Modell, lernt aus der HA-Statistik): Dachflaechen
   # azimut: 0 = Nord, 90 = Ost, 180 = Sued, 270 = West; kwp: Leistung der Flaeche
@@ -98,9 +105,12 @@ schema:
   ev_max_strom_1ph_a: int(6,32)
   min_strom_a: int(6,16)
   akku_kapazitaet_kwh: float(10,200)
+  ev_max_leistung_kw: float(1,350)
+  sensor_auto_soc: match(^(sensor\.[a-z0-9_]+)?$)
   ladewirkungsgrad: float(0.5,1)
   ev_tracker_url: str
   ev_tracker_token: password
+  ev_tracker_fahrzeug: str
   akku_als_netz: bool
   pv_flaechen:
     - name: str

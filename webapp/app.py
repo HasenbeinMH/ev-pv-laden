@@ -97,6 +97,62 @@ async def api_parameter(request: Request):
     return {"ok": True, "parameter": lz.regelung.param.als_dict()}
 
 
+@app.post("/api/trockenlauf")
+async def api_trockenlauf(request: Request):
+    """Trockenlauf schalten (nur wenn die Add-on-Option ihn nicht fest sperrt)."""
+    lz = request.app.state.lz
+    if not lz.regelung:
+        return JSONResponse({"ok": False, "fehler": ["Regelung nicht aktiv"]}, status_code=409)
+    try:
+        an = (await request.json())["an"]
+        if not isinstance(an, bool):
+            raise ValueError
+    except Exception:
+        return JSONResponse({"ok": False, "fehler": ['{"an": true/false} erwartet']}, status_code=400)
+    fehler = await lz.trockenlauf_setzen(an)
+    if fehler:
+        return JSONResponse({"ok": False, "fehler": fehler}, status_code=409)
+    return {"ok": True, "trockenlauf": lz.trockenlauf}
+
+
+@app.get("/api/heute")
+def api_heute(request: Request):
+    """Minutenmittel seit Mitternacht (Ortszeit von HA) fuer das Dashboard."""
+    lz = request.app.state.lz
+    if not lz.erfassung:
+        return {"spalten": [], "daten": []}
+    from datetime import datetime
+    mitternacht = datetime.now(lz.erfassung.tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    return lz.tagesverlauf.liste(mitternacht.timestamp())
+
+
+@app.post("/api/tracker/senden")
+async def api_tracker_senden(request: Request):
+    """Offene Ladevorgaenge sofort an den EV Tracker uebergeben (sonst jede Minute)."""
+    lz = request.app.state.lz
+    if not lz.tracker or not lz.tracker.aktiv:
+        return JSONResponse({"ok": False, "fehler": ["EV Tracker nicht eingerichtet (Adresse/Token)"]},
+                            status_code=409)
+    ok = await lz.tracker.durchlauf()
+    return {"ok": ok, "tracker": lz.tracker.status()}
+
+
+@app.post("/api/auto_soc")
+async def api_auto_soc(request: Request):
+    """SoC des Autos jetzt (Zielzeit) – ab hier rechnet der Wallbox-Zaehler hoch."""
+    lz = request.app.state.lz
+    if not lz.regelung:
+        return JSONResponse({"ok": False, "fehler": ["Regelung nicht aktiv"]}, status_code=409)
+    try:
+        soc = float((await request.json())["soc"])
+    except Exception:
+        return JSONResponse({"ok": False, "fehler": ["{\"soc\": Zahl} erwartet"]}, status_code=400)
+    fehler = lz.regelung.auto_soc_setzen(soc)
+    if fehler:
+        return JSONResponse({"ok": False, "fehler": fehler}, status_code=422)
+    return {"ok": True, "zielzeit": lz.regelung.zielzeit_status()}
+
+
 @app.get("/api/prognose")
 def api_prognose(request: Request):
     lz = request.app.state.lz
