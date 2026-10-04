@@ -22,7 +22,16 @@ V = {"id": 1, "start": "2026-10-05T10:00:00+02:00", "ende": "2026-10-05T12:30:00
 
 
 def test_nutzlast_akku_zaehlt_als_pv():
-    assert nutzlast(V, k()) == {"start": V["start"], "ende": V["ende"], "kwh_netz": 1.5, "kwh_pv": 10.0}
+    # Ortszeit ohne Zeitzone, wie die HA-Vorlage des Trackers (input_datetime)
+    assert nutzlast(V, k()) == {"start": "2026-10-05 10:00:00", "ende": "2026-10-05 12:30:00",
+                                "kwh_netz": 1.5, "kwh_pv": 10.0}
+
+
+def test_mqtt_status():
+    from tracker import Uebergabe
+    assert Uebergabe(Konfig()).mqtt_zustand()["tracker_status"] == "nicht eingerichtet"
+    u = Uebergabe(k())
+    assert u.mqtt_zustand() == {"tracker_status": "alles übergeben", "tracker_offen": 0, "tracker_gesendet": None}
 
 
 def test_nutzlast_akku_als_netz_und_fahrzeug():

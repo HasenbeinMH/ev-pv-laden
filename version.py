@@ -8,9 +8,19 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.10.2"
+VERSION = "0.10.3"
 
 CHANGELOG = [
+    {
+        "version": "0.10.3",
+        "datum": "2026-10-04",
+        "titel": "Gemeinsame Zaehler mit dem EV Tracker",
+        "aenderungen": [
+            "Neue HA-Zaehler 'EV Tracker: PV ins Auto' und 'EV Tracker: Netz ins Auto' (Hausakku wie bei den Einzelladungen) - im Tracker als Monatssensoren eintragen",
+            "Status der Uebergabe in HA: Uebergabe, offene Ladungen, zuletzt uebergeben",
+            "Ladebeginn und -ende gehen als Ortszeit ohne Zeitzone an den Tracker (wie dessen HA-Vorlage)",
+        ],
+    },
     {
         "version": "0.10.2",
         "datum": "2026-10-04",

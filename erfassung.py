@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import datenbank as db
 from bilanz import QUELLEN, Bilanz, BilanzZustand, aufteilen
+from tracker import aufteilung as tracker_aufteilung
 from konfig import Konfig
 from ladevorgang import Erkennung, Stand, Vorgang
 from prozessabbild import Prozessabbild
@@ -185,6 +186,11 @@ class Erfassung:
         z, live = self.bilanz.z, self.live
         return {
             **{f"kwh_{q}": round(z.kwh[q], 5) for q in QUELLEN},
+            # Gemeinsame Zaehler fuer den Monatsimport des EV Trackers (gleiche Aufteilung
+            # wie die Einzelladungen: Hausakku als PV bzw. Netz)
+            **dict(zip(("tracker_kwh_pv", "tracker_kwh_netz"),
+                       (round(x, 5) for x in tracker_aufteilung(z.kwh["pv"], z.kwh["akku"], z.kwh["netz"],
+                                                                self.konfig)))),
             "kwh_ohne_aufteilung": round(z.kwh_ohne_aufteilung, 5),
             **{f"leistung_{q}": (round(live[q]) if live else None) for q in QUELLEN},
             "lebenszeichen": datetime.now(timezone.utc).isoformat(timespec="seconds"),

@@ -269,6 +269,7 @@ class Laufzeit:
     def mqtt_zustand(self) -> dict:
         r = self.regelung
         return {**self.erfassung.mqtt_zustand(), **r.mqtt_zustand(), **self._pv_mqtt(),
+                **(self.tracker.mqtt_zustand() if self.tracker else {}),
                 **mqtt_ha.bedien_zustand(r.param, self.trockenlauf, r.soc.soc(self.abbild.wert("goe_eto")))}
 
     def _meldungen(self, werte: dict) -> None:

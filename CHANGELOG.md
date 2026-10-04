@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.10.3] - 2026-10-04
+
+Gemeinsame Zähler mit dem EV Tracker.
+
+- Neue HA-Zähler **„EV Tracker: PV ins Auto“** (`sensor.ev_pv_laden_tracker_kwh_pv`) und **„EV Tracker: Netz ins Auto“** (`sensor.ev_pv_laden_tracker_kwh_netz`) – mit derselben Aufteilung wie die Einzelladungen (Hausakku zählt als PV, bei `akku_als_netz: true` als Netz). Im EV Tracker unter Einstellungen als „PV ins Auto“ und „Netz ins Auto“ eintragen: Dann zieht sein Monatsimport die Einzelladungen von genau diesen Zählern ab, nichts wird doppelt oder gar nicht gezählt
+- Status der Übergabe in HA: „EV Tracker: Übergabe“ (alles übergeben / n offen / Fehlertext), „offene Ladungen“ und „zuletzt übergeben“
+- Ladebeginn und -ende gehen als Ortszeit ohne Zeitzone an den Tracker – wie bei dessen HA-Vorlage; vorher hing die Uhrzeit von der Zeitzone im Tracker-Container ab
+
 ## [0.10.2] - 2026-10-04
 
 - Reiter Laden → Ladevorgänge: Knopf **„Verbindung testen“** prüft Adresse und Token des EV Trackers. Gesendet wird eine leere Testladung – der Tracker lehnt sie nach der Token-Prüfung ab (422) und speichert nichts. Ergebnis: „Verbindung in Ordnung“, „Token abgelehnt“ oder „nicht erreichbar“; es steht auch im Ereignisprotokoll

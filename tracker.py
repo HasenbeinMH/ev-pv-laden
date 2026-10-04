@@ -7,6 +7,15 @@ Schnittstelle (geprueft im Quellcode des EV Trackers, heimladung.annehmen):
   JSON: start, ende (ISO), kwh_netz, kwh_pv, kosten (optional), fahrzeug (optional, id/Name)
   Erneutes Senden derselben Startminute ueberschreibt (upsert) – Wiederholen ist gefahrlos.
 
+Zeiten: Ortszeit ohne Zeitzone ("2026-10-05 10:00:00") wie die HA-Vorlage des Trackers –
+der Tracker rechnet Zeiten MIT Zeitzone in die Zeitzone seines Containers um; fehlen dort
+die Zeitzonendaten, waeren alle Ladungen um die UTC-Differenz verschoben.
+
+Monatsimport: Der Tracker zieht die Einzelladungen vom Monatszaehler ab. Dafuer stellt das
+Add-on eigene Zaehler bereit (zaehler_pv/zaehler_netz, MQTT: tracker_kwh_pv/_netz) mit
+derselben Aufteilung wie die Einzelladungen – im Tracker als „PV ins Auto“ und „Netz ins
+Auto“ eintragen.
+
 Aufteilung: der Hausakku zaehlt als PV (akku_als_netz: false) oder als Netz (true).
 "Ohne Aufteilung" steckt im Bilanzbaustein bereits im Netzanteil.
 kosten wird nicht gesendet: der Tracker rechnet den Netzanteil mit seinem Tagestarif.
@@ -34,16 +43,27 @@ TIMEOUT_S = 15.0
 MIN_KWH = 0.05            # kleinere Vorgaenge (Abstecken ohne Laden) werden nicht gesendet
 
 
+def ortszeit(iso: str | None) -> str | None:
+    """Gespeicherte Zeit (mit Offset der HA-Zeitzone) -> Ortszeit ohne Zeitzone."""
+    if not iso:
+        return None
+    t = datetime.fromisoformat(iso)
+    return t.replace(tzinfo=None).isoformat(sep=" ", timespec="seconds")
+
+
+def aufteilung(pv: float, akku: float, netz: float, k: Konfig) -> tuple[float, float]:
+    """(PV, Netz) im Sinne des Trackers – der kennt keinen Hausakku."""
+    return (pv, netz + akku) if k.akku_als_netz else (pv + akku, netz)
+
+
 def nutzlast(v: dict, k: Konfig) -> dict | None:
     """Ladevorgang (Zeile aus ladevorgaenge) -> JSON fuer den Tracker; None = nichts zu senden."""
     pv, akku, netz = (float(v.get(n) or 0.0) for n in ("pv", "akku", "netz"))
     if pv + akku + netz < MIN_KWH:
         return None
-    if k.akku_als_netz:
-        netz += akku
-    else:
-        pv += akku
-    d = {"start": v["start"], "ende": v["ende"], "kwh_netz": round(netz, 3), "kwh_pv": round(pv, 3)}
+    pv, netz = aufteilung(pv, akku, netz, k)
+    d = {"start": ortszeit(v["start"]), "ende": ortszeit(v["ende"]),
+         "kwh_netz": round(netz, 3), "kwh_pv": round(pv, 3)}
     if k.ev_tracker_fahrzeug:
         d["fahrzeug"] = k.ev_tracker_fahrzeug
     return d
@@ -170,6 +190,17 @@ class Uebergabe:
             self._gemeldet = text
             log.warning("EV Tracker: %s", text)
             db.ereignis("warnung", "tracker", text)
+
+    def mqtt_zustand(self) -> dict:
+        """Status der Uebergabe als HA-Sensoren."""
+        if not self.aktiv:
+            text = "nicht eingerichtet"
+        elif self.letzter_fehler:
+            text = self.letzter_fehler[:250]
+        else:
+            text = f"{self.offen} offen" if self.offen else "alles übergeben"
+        return {"tracker_status": text, "tracker_offen": self.offen if self.aktiv else None,
+                "tracker_gesendet": self.zuletzt_gesendet}
 
     def status(self) -> dict:
         return {"aktiv": self.aktiv, "adresse": adresse(self.k) if self.aktiv else None,

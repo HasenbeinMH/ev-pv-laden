@@ -118,7 +118,8 @@ def test_mqtt_zustand_passt_zur_discovery(frische_db):
     pv = {"pv_prognose_heute": 1.0, "pv_prognose_rest_heute": 0.5, "pv_prognose_morgen": 2.0,
           "pv_sauberkeit": 80}
     zustand = {**erf.mqtt_zustand(), **reg.mqtt_zustand(), **pv,
-               **mqtt_ha.bedien_zustand(reg.param, True, None)}
+               **mqtt_ha.bedien_zustand(reg.param, True, None),
+               **__import__("tracker").Uebergabe(K).mqtt_zustand()}
     nutzlast = mqtt_ha.discovery_nutzlast()
     for name, komp in nutzlast["components"].items():
         if set(komp) == {"platform"} or komp.get("state_topic") == mqtt_ha.EREIGNIS:
