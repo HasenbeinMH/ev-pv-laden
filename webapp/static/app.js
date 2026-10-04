@@ -67,7 +67,7 @@ $("theme").onclick = () => {
   document.documentElement.dataset.theme = neu;
   try { localStorage.setItem("evpv-theme", neu); } catch (e) {}
   themeKnopf();
-  verlauf(); prognoseZeichnen();
+  verlauf(); prognoseZeichnen(); sauberkeitZeichnen();
   flussAufbauen(); flussSetzen(letzteWerte);
 };
 themeKnopf();
@@ -342,6 +342,9 @@ async function prognoseLaden() {
   $("prognose-unter").textContent = prognose.verfuegbar
     ? `heute ${kwh(prognose.heute_kwh)}, Rest ${kwh(prognose.heute_rest_kwh)} · morgen ${kwh(prognose.morgen_kwh)}`
     : (prognose.fehler || "");
+  $("prognose-quelle").textContent = prognose.quelle || "";
+  $("prognose-quelle").className = "marke " + (prognose.quelle === "eigenes Modell" ? "trocken" : "");
+  if (prognose.quelle) $("k-prognose-unter").textContent += " · " + prognose.quelle;
   prognoseZeichnen();
 }
 function prognoseZeichnen() {
@@ -354,11 +357,65 @@ function prognoseZeichnen() {
   prognoseDiagramm.setOption({
     animation: false, grid: {left: 60, right: 16, top: 16, bottom: 30},
     tooltip: a.tooltip, xAxis: a.x, yAxis: a.y,
-    series: [{name: "PV-Prognose", type: "bar", barWidth: "60%", data: daten, color: css("--solar"),
+    legend: {top: 0, textStyle: {color: a.text}},
+    series: [{name: prognose.quelle || "PV-Prognose", type: "bar", barWidth: "60%", data: daten, color: css("--solar"),
               markLine: {symbol: "none", silent: true, label: {formatter: "jetzt", color: a.text},
-                         lineStyle: {color: css("--text-2"), type: "dashed"}, data: [{xAxis: Date.now()}]}}],
+                         lineStyle: {color: css("--text-2"), type: "dashed"}, data: [{xAxis: Date.now()}]}},
+             ...(prognose.vergleich ? [{name: "Vergleich: Home Assistant", type: "line", step: "middle",
+               showSymbol: false, color: css("--text-3"), lineStyle: {width: 1.5, type: "dashed"},
+               data: (prognose.vergleich.stunden || []).map(s => [new Date(s.zeit).getTime() - 1800e3, s.wh])}] : [])],
   }, true);
 }
+
+// ── PV-Anlage: Sauberkeit und Modell ──────────────────────────────────────────
+let pvStatus = null, sauberDiagramm = null;
+async function pvLaden() {
+  try { pvStatus = await holen("api/pvmodell"); } catch (e) { return; }
+  const p = pvStatus;
+  const prozent = v => v === null || v === undefined ? "–" : zahl(v * 100) + "<small>%</small>";
+  $("pv-sauberkeit").innerHTML = prozent(p.sauberkeit);
+  $("pv-sauberkeit-unter").textContent = p.sauberkeit_stand
+    ? `Stand ${new Date(p.sauberkeit_stand).toLocaleDateString("de-DE")} · Mittel ${zahl((p.sauberkeit_mittel || 1) * 100)} %` : (p.zustand || "");
+  $("pv-sauberkeit-box").style.setProperty("--c", p.reinigung_empfohlen ? "var(--warnung)" : "var(--ok)");
+  $("pv-verlust").innerHTML = p.verlust_prozent === null || p.verlust_prozent === undefined ? "–" : zahl(p.verlust_prozent) + "<small>%</small>";
+  $("pv-verlust-unter").textContent = p.gereinigt_am
+    ? `gereinigt am ${new Date(p.gereinigt_am).toLocaleDateString("de-DE")}` + (p.zuschlag > 1.001 ? ` · Prognose +${zahl((p.zuschlag - 1) * 100)} %` : "")
+    : "gegenüber den saubersten Wochen";
+  $("pv-modell").innerHTML = p.training_laeuft ? "Training läuft …"
+    : p.trainiert_am ? '<span class="ok">trainiert</span>' : esc(p.zustand || "–");
+  const k = p.kennzahlen || {};
+  $("pv-modell-kennzahlen").textContent = p.trainiert_am
+    ? `${new Date(p.trainiert_am).toLocaleDateString("de-DE")} · ${k.tage || "?"} Tage · ${k.felder || "?"} Felder` + (p.fehler ? " · " + p.fehler : "")
+    : (p.fehler || "");
+  $("pv-hinweis").textContent = p.reinigung_empfohlen
+    ? "Die Anlage ist deutlich schmutziger als üblich – eine Reinigung lohnt sich."
+    : "Sauberkeit: 100 % = so sauber wie die saubersten Wochen der Historie. Nach einer Reinigung den Knopf drücken.";
+  $("pv-hinweis").className = p.reinigung_empfohlen ? "hinweis warnung" : "hinweis";
+  sauberkeitZeichnen();
+}
+function sauberkeitZeichnen() {
+  if (!window.echarts || location.hash !== "#bilanz" || !pvStatus || !pvStatus.sauberkeit_wochen) return;
+  sauberDiagramm = sauberDiagramm || echarts.init($("sauberkeit-diagramm"));
+  diagramme[2] = sauberDiagramm;
+  const a = achsen();
+  const daten = Object.entries(pvStatus.sauberkeit_wochen).map(([w, v]) => [new Date(w).getTime(), Math.round(v * 100)]);
+  sauberDiagramm.setOption({
+    animation: false, grid: {left: 50, right: 16, top: 16, bottom: 30},
+    tooltip: {...a.tooltip, valueFormatter: x => x + " %"}, xAxis: a.x,
+    yAxis: {...a.y, min: 40, max: 110, axisLabel: {...a.y.axisLabel, formatter: v => v + " %"}},
+    series: [{name: "Sauberkeit", type: "line", data: daten, showSymbol: true, symbolSize: 4, color: css("--primary"),
+              markLine: {symbol: "none", silent: true, lineStyle: {color: css("--text-3"), type: "dashed"},
+                         label: {formatter: "Mittel", color: a.text},
+                         data: [{yAxis: Math.round((pvStatus.sauberkeit_mittel || 1) * 100)}]}}],
+  }, true);
+}
+$("gereinigt").onclick = async () => {
+  if (!confirm("Anlage heute gereinigt? Die Prognose wird dann angehoben.")) return;
+  const r = await fetch("api/pvmodell/gereinigt", {method: "POST"});
+  const j = await r.json();
+  if (!j.ok) alert(j.fehler.join("; "));
+  pvLaden(); prognoseLaden();
+};
 window.addEventListener("resize", () => diagramme.forEach(d => d && d.resize()));
 
 // ── Bilanz, Ladevorgänge, Ereignisse ────────────────────────────────────────
@@ -414,7 +471,7 @@ async function ereignisse() {
 function laden() {
   const s = location.hash || "#live";
   if (s === "#live") { regelung(); verlauf(); prognoseLaden(); }
-  if (s === "#bilanz" || s === "#ladungen") { bilanz(); prognoseLaden(); }
+  if (s === "#bilanz" || s === "#ladungen") { bilanz(); prognoseLaden(); pvLaden(); }
   if (s === "#diagnose") ereignisse();
 }
 flussAufbauen();
@@ -426,3 +483,4 @@ setInterval(() => { if (!location.hash || location.hash === "#live") verlauf(); 
 setInterval(() => { if (["#bilanz", "#ladungen"].includes(location.hash)) bilanz(); }, 5000);
 setInterval(() => { if (location.hash === "#diagnose") ereignisse(); }, 10000);
 setInterval(prognoseLaden, 300000);
+setInterval(() => { if (location.hash === "#bilanz") pvLaden(); }, 60000);

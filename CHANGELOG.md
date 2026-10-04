@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.6.0] - 2026-10-04
+
+Eigenes PV-Prognosemodell, auf die Anlage zugeschnitten (Details: `docs/PV_Modell.md`).
+
+- PV-Prognose = Open-Meteo-Einstrahlung je Dachfläche × gelerntes Kennfeld (Verschattung je Sonnenstand, Wirkungsgrad, Laub im Sommer). Das Add-on trainiert es selbst aus der HA-Statistik (bis 3 Jahre) – im Test rund ein Viertel genauer als die Standardrechnung
+- Sauberkeit der Anlage wird laufend geschätzt: Anzeige, Verlauf, Reinigungshinweis und Knopf „Anlage gereinigt“ (hebt die Prognose an)
+- Prognose-Diagramm mit Vergleich zur HA-Prognose (Energie-Dashboard)
+- Neue HA-Sensoren: PV-Prognose heute / Rest heute / morgen, PV-Sauberkeit
+- Neue Optionen: `pv_flaechen` (Neigung, Azimut, kWp je Fläche) und die Sensoren der gemessenen PV-Erzeugung
+
 ## [0.5.1] - 2026-10-03
 
 - Icon und Logo für den Add-on-Store, Symbol auch oben links in der Oberfläche

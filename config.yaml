@@ -5,7 +5,7 @@
 # Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
 # Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
 name: EV PV-Laden
-version: "0.5.1"
+version: "0.6.0"
 slug: ev_pv_laden
 description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
 url: "https://github.com/HasenbeinMH/ev-pv-laden"
@@ -54,6 +54,26 @@ options:
   ev_tracker_url: ""
   ev_tracker_token: ""
   akku_als_netz: false
+  # PV-Prognose (eigenes Modell, lernt aus der HA-Statistik): Dachflaechen
+  # azimut: 0 = Nord, 90 = Ost, 180 = Sued, 270 = West; kwp: Leistung der Flaeche
+  pv_flaechen:
+    - name: Süd
+      neigung: 8
+      azimut: 180
+      kwp: 3.33
+    - name: Nord
+      neigung: 12
+      azimut: 0
+      kwp: 3.33
+    - name: Ost
+      neigung: 25
+      azimut: 90
+      kwp: 3.33
+  # Gemessene PV-Erzeugung: Energiezaehler (kWh) ODER SolarEdge-Hybrid (DC + Akku)
+  sensor_pv_energie: ""
+  sensor_pv_dc_leistung: sensor.se_modbus_daten_dc_power
+  sensor_akku_geladen: sensor.se_modbus_daten_battery1_charged
+  sensor_akku_entladen: sensor.se_modbus_daten_battery1_discharged
 schema:
   trockenlauf: bool
   log_level: list(debug|info|warning|error)
@@ -77,3 +97,12 @@ schema:
   ev_tracker_url: str
   ev_tracker_token: password
   akku_als_netz: bool
+  pv_flaechen:
+    - name: str
+      neigung: float(0,90)
+      azimut: float(0,360)
+      kwp: float(0.05,100)
+  sensor_pv_energie: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_pv_dc_leistung: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_akku_geladen: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_akku_entladen: match(^(sensor\.[a-z0-9_]+)?$)

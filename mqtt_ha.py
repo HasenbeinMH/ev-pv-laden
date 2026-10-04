@@ -94,6 +94,14 @@ def _text(name, schluessel, icon, diagnose=False):
     return d
 
 
+def _prognose(name, schluessel):
+    # Prognosewerte sind keine Zaehler: device_class energy ohne state_class
+    return {"platform": "sensor", "name": name, "unique_id": f"{KENNUNG}_{schluessel}",
+            "default_entity_id": f"sensor.{KENNUNG}_{schluessel}", "device_class": "energy",
+            "unit_of_measurement": "kWh", "suggested_display_precision": 1,
+            "value_template": f"{{{{ value_json.{schluessel} }}}}", "icon": "mdi:solar-power-variant"}
+
+
 def discovery_nutzlast() -> dict:
     return {
         "device": {"identifiers": [KENNUNG], "name": "EV PV-Laden", "manufacturer": "HasenbeinMH",
@@ -119,6 +127,15 @@ def discovery_nutzlast() -> dict:
             "regelzustand": _text("Regelzustand", "regelzustand", "mdi:state-machine"),
             "modus": _text("Lademodus", "modus", "mdi:ev-station"),
             "treiber": _text("Aktiver Treiber", "treiber", "mdi:cog-transfer", diagnose=True),
+            # PV-Prognose (eigenes Modell) und Sauberkeit der Anlage
+            "pv_prognose_heute": _prognose("PV-Prognose heute", "pv_prognose_heute"),
+            "pv_prognose_rest_heute": _prognose("PV-Prognose Rest heute", "pv_prognose_rest_heute"),
+            "pv_prognose_morgen": _prognose("PV-Prognose morgen", "pv_prognose_morgen"),
+            "pv_sauberkeit": {
+                "platform": "sensor", "name": "PV-Sauberkeit", "unique_id": f"{KENNUNG}_pv_sauberkeit",
+                "default_entity_id": f"sensor.{KENNUNG}_pv_sauberkeit", "unit_of_measurement": "%",
+                "state_class": "measurement", "suggested_display_precision": 0,
+                "value_template": "{{ value_json.pv_sauberkeit }}", "icon": "mdi:spray-bottle"},
             # Fuer die externe Watchdog-Automation (M8): aendert sich in jedem Sendezyklus
             "lebenszeichen": {
                 "platform": "sensor", "name": "Lebenszeichen", "unique_id": f"{KENNUNG}_lebenszeichen",

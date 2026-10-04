@@ -114,12 +114,16 @@ def test_mqtt_zustand_passt_zur_discovery(frische_db):
     pa = Prozessabbild(K)
     erf, reg = Erfassung(K, pa), Regelung(K, pa)
     reg.zyklus()
-    zustand = {**erf.mqtt_zustand(), **reg.mqtt_zustand()}
+    # PV-Werte liefert die Laufzeit (Laufzeit._pv_mqtt)
+    pv = {"pv_prognose_heute": 1.0, "pv_prognose_rest_heute": 0.5, "pv_prognose_morgen": 2.0,
+          "pv_sauberkeit": 80}
+    zustand = {**erf.mqtt_zustand(), **reg.mqtt_zustand(), **pv}
     nutzlast = mqtt_ha.discovery_nutzlast()
     for name, komp in nutzlast["components"].items():
         assert komp["unique_id"].startswith("ev_pv_laden_")
         assert name in zustand, f"{name} fehlt im Zustand"
-    zaehler = [k for k in nutzlast["components"].values() if k.get("device_class") == "energy"]
+    zaehler = [k for n, k in nutzlast["components"].items() if n.startswith("kwh_")]
+    assert len(zaehler) == 4
     assert all(k["state_class"] == "total_increasing" and k["unit_of_measurement"] == "kWh"
                for k in zaehler)
     assert {"device", "origin", "components"} <= set(nutzlast)

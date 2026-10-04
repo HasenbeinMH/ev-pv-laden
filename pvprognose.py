@@ -1,0 +1,189 @@
+# -*- coding: utf-8 -*-
+"""
+PV-Prognose zur Laufzeit (eigenes Modell, siehe pvmodell.py).
+
+  Training     beim ersten Start und danach woechentlich: HA-Statistik (bis 3 Jahre) +
+               archivierte Open-Meteo-Prognosen + Open-Meteo-Archiv
+  Sauberkeit   taeglich aus den letzten 14 Tagen (bzw. seit der letzten Reinigung)
+  Prognose     stuendlich: Open-Meteo-Prognose x Kennfeld (x Zuschlag nach Reinigung)
+Das Modell liegt in der Datenbank (Einstellung "pvmodell"), nicht im Repo – die
+Anlagendaten bleiben lokal.
+"""
+import asyncio
+import logging
+import time
+from datetime import date, datetime, timedelta, timezone
+
+import aiohttp
+
+import datenbank as db
+import pvdaten
+import pvmodell as pm
+from prognose import Prognose
+
+log = logging.getLogger("pvprognose")
+
+SCHLUESSEL = "pvmodell"
+TRAINING_TAGE = 3 * 365
+NEU_TRAINIEREN_TAGE = 7
+PROGNOSE_S = 3600
+SAUBERKEIT_S = 24 * 3600
+TAKT_S = 60
+
+
+class PVPrognose:
+    def __init__(self, konfig, ziel: Prognose):
+        self.konfig = konfig
+        self.ziel = ziel                      # Prognose-Objekt, das Oberflaeche/MQTT lesen
+        self.flaechen = pvdaten.flaechen_aus_konfig(konfig.pv_flaechen)
+        self.modell = pm.Modell.aus_dict(db.einstellung(SCHLUESSEL))
+        self.zustand = "wartet auf Home Assistant"
+        self.fehler: str | None = None
+        self.training_laeuft = False
+        self._zuletzt_prognose = 0.0
+        self._zuletzt_sauberkeit = 0.0
+        self._zuletzt_training_versuch = 0.0
+
+    @property
+    def aktiv(self) -> bool:
+        return bool(self.flaechen)
+
+    def _sichern(self) -> None:
+        db.einstellung_setzen(SCHLUESSEL, self.modell.als_dict())
+
+    # ── Ablauf ───────────────────────────────────────────────────────────────────────
+    async def laufen(self, ha) -> None:
+        if not self.aktiv:
+            self.zustand = "keine Dachflaechen konfiguriert"
+            return
+        async with aiohttp.ClientSession() as sitzung:
+            while True:
+                try:
+                    if ha.verbunden and ha.standort and ha.zeitzone:
+                        await self._schritt(ha, sitzung)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    self.fehler = f"{type(e).__name__}: {e}"
+                    log.warning("PV-Prognose: %s", self.fehler)
+                await asyncio.sleep(TAKT_S)
+
+    async def _schritt(self, ha, sitzung) -> None:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(ha.zeitzone)
+        jetzt = time.monotonic()
+        alt = (not self.modell.trainiert or not self.modell.trainiert_am or
+               (datetime.now(timezone.utc) - datetime.fromisoformat(self.modell.trainiert_am)).days
+               >= NEU_TRAINIEREN_TAGE)
+        if alt and jetzt - self._zuletzt_training_versuch > 6 * 3600:
+            self._zuletzt_training_versuch = jetzt
+            await self.trainieren(ha, sitzung, tz)
+        if not self.modell.trainiert:
+            self.zustand = "nicht trainiert"
+            return
+        if jetzt - self._zuletzt_sauberkeit > SAUBERKEIT_S:
+            self._zuletzt_sauberkeit = jetzt
+            await self.sauberkeit_aktualisieren(ha, sitzung, tz)
+        if jetzt - self._zuletzt_prognose > PROGNOSE_S:
+            self._zuletzt_prognose = jetzt
+            await self.prognose_aktualisieren(ha, sitzung, tz)
+        self.zustand = "aktiv"
+
+    # ── Training ─────────────────────────────────────────────────────────────────────
+    async def trainieren(self, ha, sitzung, tz) -> None:
+        self.training_laeuft, self.zustand = True, "Training laeuft"
+        lat, lon = ha.standort
+        try:
+            ende_tag = pvdaten.gestern()
+            start = datetime.now(timezone.utc) - timedelta(days=TRAINING_TAGE)
+            ende = datetime(ende_tag.year, ende_tag.month, ende_tag.day, tzinfo=timezone.utc)
+            log.info("PV-Modell: Training mit Daten ab %s", start.date())
+            mess = await pvdaten.pv_messung(ha, self.konfig, start, ende)
+            if not mess:
+                raise RuntimeError("keine PV-Messwerte in der HA-Statistik")
+            erster = min(mess).date()
+            zeitraum = {"start_date": erster.isoformat(), "end_date": ende_tag.isoformat()}
+            prog = await pvdaten.gti_holen(sitzung, pvdaten.ALTE_PROGNOSE, lat, lon, self.flaechen, zeitraum)
+            arch = await pvdaten.gti_holen(sitzung, pvdaten.ARCHIV, lat, lon, self.flaechen, zeitraum)
+            neu = await asyncio.to_thread(pm.trainieren, mess, prog, arch, self.flaechen, lat, lon, tz)
+            # Bedienhandlung "gereinigt" ueber das Neutraining hinweg erhalten
+            neu.gereinigt_am = self.modell.gereinigt_am
+            if self.modell.gereinigt_am and self.modell.sauberkeit is not None and (
+                    not neu.sauberkeit_stand or neu.sauberkeit_stand < self.modell.gereinigt_am):
+                neu.sauberkeit, neu.sauberkeit_stand = self.modell.sauberkeit, self.modell.sauberkeit_stand
+            neu.trainiert_am = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            neu.kennzahlen["tage"] = len({t.date() for t in mess})
+            self.modell = neu
+            self._sichern()
+            self.fehler = None
+            self._zuletzt_prognose = 0.0   # sofort neu rechnen
+            text = (f"PV-Modell trainiert: {neu.kennzahlen['tage']} Tage, {neu.kennzahlen['felder']} "
+                    f"Kennfeld-Felder, Schmutzverlust im Mittel {neu.kennzahlen['verlust_schmutz_prozent']} %")
+            log.info(text)
+            db.ereignis("info", "pvmodell", text)
+        except Exception as e:
+            self.fehler = f"Training: {e}"
+            log.warning("PV-Modell: %s", self.fehler)
+            db.ereignis("warnung", "pvmodell", self.fehler)
+        finally:
+            self.training_laeuft = False
+
+    # ── Sauberkeit ───────────────────────────────────────────────────────────────────
+    async def sauberkeit_aktualisieren(self, ha, sitzung, tz) -> None:
+        lat, lon = ha.standort
+        ende_tag = pvdaten.gestern()
+        ende = datetime(ende_tag.year, ende_tag.month, ende_tag.day, tzinfo=timezone.utc) + timedelta(days=1)
+        start = ende - timedelta(days=pm.SAUBERKEIT_FENSTER_TAGE)
+        if self.modell.gereinigt_am:
+            g = date.fromisoformat(self.modell.gereinigt_am)
+            start = max(start, datetime(g.year, g.month, g.day, tzinfo=timezone.utc) + timedelta(days=1))
+        if start >= ende:
+            return
+        mess = await pvdaten.pv_messung(ha, self.konfig, start, ende)
+        arch = await pvdaten.gti_holen(sitzung, pvdaten.ARCHIV, lat, lon, self.flaechen,
+                                       {"start_date": start.date().isoformat(), "end_date": ende_tag.isoformat()})
+        wert, sonne = pm.sauberkeit_schaetzen(self.modell, mess, arch, self.flaechen, lat, lon, tz)
+        if wert is None:
+            log.info("Sauberkeit: zu wenig Sonne im Fenster (%.0f kWh) – Wert bleibt", sonne)
+            return
+        heute = datetime.now(tz).date()
+        self.modell.sauberkeit, self.modell.sauberkeit_stand = wert, heute.isoformat()
+        woche = (heute - timedelta(days=heute.weekday())).isoformat()
+        self.modell.sauberkeit_wochen[woche] = wert
+        self._sichern()
+        log.info("Sauberkeit %.0f %% (Mittel %.0f %%)", wert * 100, self.modell.sauberkeit_mittel * 100)
+
+    def gereinigt(self, heute: date) -> None:
+        """Bedienhandlung: Anlage wurde gereinigt."""
+        self.modell.gereinigt_am = heute.isoformat()
+        self.modell.sauberkeit, self.modell.sauberkeit_stand = 1.0, heute.isoformat()
+        self._sichern()
+        self._zuletzt_prognose = 0.0
+        db.ereignis("info", "pvmodell", f"Anlage gereinigt am {heute:%d.%m.%Y} – Prognose "
+                                        f"+{(self.modell.zuschlag(heute) - 1) * 100:.0f} %")
+
+    # ── Prognose ─────────────────────────────────────────────────────────────────────
+    async def prognose_aktualisieren(self, ha, sitzung, tz) -> None:
+        lat, lon = ha.standort
+        einstrahlung = await pvdaten.gti_holen(sitzung, pvdaten.PROGNOSE, lat, lon, self.flaechen,
+                                               {"past_days": 1, "forecast_days": 3})
+        stunden = sorted(einstrahlung.items())
+        werte = self.modell.prognose(stunden, self.flaechen, lat, lon, tz)
+        # Format wie energy/solar_forecast: Zeitstempel = Ende der Stunde, Wh
+        wh = {(t + timedelta(hours=1)).isoformat(): round(kwh * 1000) for t, kwh in werte}
+        self.ziel.setzen({"eigenes_modell": {"wh_hours": wh}}, datetime.now(tz))
+
+    # ── Anzeige ──────────────────────────────────────────────────────────────────────
+    def status(self, heute: date) -> dict:
+        m = self.modell
+        mittel = m.sauberkeit_mittel
+        return {
+            "aktiv": self.aktiv, "zustand": self.zustand, "fehler": self.fehler,
+            "training_laeuft": self.training_laeuft, "trainiert_am": m.trainiert_am,
+            "kennzahlen": m.kennzahlen, "flaechen": [f.__dict__ for f in self.flaechen],
+            "sauberkeit": m.sauberkeit, "sauberkeit_stand": m.sauberkeit_stand,
+            "sauberkeit_mittel": mittel, "verlust_prozent": m.verlust_prozent(),
+            "zuschlag": round(m.zuschlag(heute), 3), "gereinigt_am": m.gereinigt_am,
+            "reinigung_empfohlen": m.sauberkeit is not None and m.sauberkeit < mittel - 0.05,
+            "sauberkeit_wochen": m.sauberkeit_wochen,
+        }

@@ -103,4 +103,29 @@ def api_prognose(request: Request):
     if not lz.erfassung:
         return {"verfuegbar": False}
     from datetime import datetime
-    return lz.prognose.uebersicht(datetime.now(lz.erfassung.tz))
+    jetzt = datetime.now(lz.erfassung.tz)
+    p, quelle = lz.prognose()
+    aus = p.uebersicht(jetzt)
+    aus["quelle"] = quelle
+    if p is not lz.prognose_ha and lz.prognose_ha.werte:
+        aus["vergleich"] = lz.prognose_ha.uebersicht(jetzt)
+    return aus
+
+
+@app.get("/api/pvmodell")
+def api_pvmodell(request: Request):
+    lz = request.app.state.lz
+    if not lz.pv:
+        return {"aktiv": False, "zustand": "keine Verbindung zu Home Assistant"}
+    from datetime import datetime
+    return lz.pv.status(datetime.now(lz.erfassung.tz).date())
+
+
+@app.post("/api/pvmodell/gereinigt")
+def api_gereinigt(request: Request):
+    lz = request.app.state.lz
+    if not lz.pv or not lz.pv.modell.trainiert:
+        return JSONResponse({"ok": False, "fehler": ["PV-Modell noch nicht trainiert"]}, status_code=409)
+    from datetime import datetime
+    lz.pv.gereinigt(datetime.now(lz.erfassung.tz).date())
+    return {"ok": True}

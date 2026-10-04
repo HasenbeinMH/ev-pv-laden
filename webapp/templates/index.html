@@ -92,8 +92,24 @@
       </div>
     </div>
     <div class="block">
-      <div class="block-kopf"><i data-icon="sun"></i><h2>PV-Prognose</h2><span class="unter" id="prognose-unter"></span></div>
+      <div class="block-kopf"><i data-icon="sun"></i><h2>PV-Prognose</h2><span class="unter" id="prognose-unter"></span>
+        <div class="rechts"><span class="marke" id="prognose-quelle"></span></div></div>
       <div id="prognose-diagramm" class="diagramm" style="height:240px"></div>
+    </div>
+    <div class="block">
+      <div class="block-kopf"><i data-icon="sun"></i><h2>PV-Anlage</h2>
+        <span class="unter" id="pv-modell-unter">eigenes Prognosemodell</span>
+        <div class="rechts"><button id="gereinigt" class="primaer" type="button">Anlage gereinigt</button></div></div>
+      <div class="kacheln" style="margin-bottom:12px">
+        <div class="kachel"><div><div class="titel">Sauberkeit</div><div class="wert" id="pv-sauberkeit">–</div>
+          <div class="unter" id="pv-sauberkeit-unter"></div></div><div class="icon-box" id="pv-sauberkeit-box" style="--c:var(--info)" data-icon="sun"></div></div>
+        <div class="kachel"><div><div class="titel">Verlust durch Schmutz</div><div class="wert" id="pv-verlust">–</div>
+          <div class="unter" id="pv-verlust-unter"></div></div><div class="icon-box" style="--c:var(--warnung)" data-icon="gauge"></div></div>
+        <div class="kachel"><div><div class="titel">Modell</div><div class="wert" id="pv-modell" style="font-size:1.1rem">–</div>
+          <div class="unter" id="pv-modell-kennzahlen"></div></div><div class="icon-box" style="--c:var(--primary)" data-icon="chart-line"></div></div>
+      </div>
+      <div id="pv-hinweis" class="hinweis"></div>
+      <div id="sauberkeit-diagramm" class="diagramm" style="height:200px"></div>
     </div>
     <div class="block">
       <div class="block-kopf"><i data-icon="list-checks"></i><h2>Tagesbilanz</h2>

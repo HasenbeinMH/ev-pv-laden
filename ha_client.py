@@ -108,6 +108,7 @@ class HAClient:
         self.letzter_fehler: str | None = None
         self.ha_version: str | None = None
         self.zeitzone: str | None = None      # aus get_config, fuer Tagesgrenzen
+        self.standort: tuple[float, float] | None = None   # (Breite, Laenge) aus get_config
         self._bestand: dict[str, dict] = {}
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._ids = itertools.count(1)
@@ -192,7 +193,10 @@ class HAClient:
         elif art == "result":
             if nid == self._config_id:
                 if nachricht.get("success"):
-                    self.zeitzone = (nachricht.get("result") or {}).get("time_zone")
+                    cfg = nachricht.get("result") or {}
+                    self.zeitzone = cfg.get("time_zone")
+                    if cfg.get("latitude") is not None and cfg.get("longitude") is not None:
+                        self.standort = (float(cfg["latitude"]), float(cfg["longitude"]))
             elif nid == self._abo_id:
                 if not nachricht.get("success"):
                     raise HAFehler(f"subscribe_entities abgelehnt: {nachricht.get('error')}")
@@ -202,7 +206,7 @@ class HAClient:
                 else:
                     fut.set_exception(HAFehler(str(nachricht.get("error"))))
 
-    async def anfrage(self, befehl: dict) -> dict | list | None:
+    async def anfrage(self, befehl: dict, timeout: float = ANTWORT_TIMEOUT_S) -> dict | list | None:
         """Beliebiger WebSocket-Befehl, wartet auf das Ergebnis. Nur lesend verwenden –
         Schreibendes laeuft ueber dienst_aufrufen (mit Trockenlauf-Sperre)."""
         if not self._ws or not self.verbunden:
@@ -212,7 +216,7 @@ class HAClient:
         self._offen[nid] = fut
         await self._ws.send_json({**befehl, "id": nid})
         try:
-            return await asyncio.wait_for(fut, ANTWORT_TIMEOUT_S)
+            return await asyncio.wait_for(fut, timeout)
         finally:
             self._offen.pop(nid, None)
 

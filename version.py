@@ -8,9 +8,21 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.5.1"
+VERSION = "0.6.0"
 
 CHANGELOG = [
+    {
+        "version": "0.6.0",
+        "datum": "2026-10-04",
+        "titel": "Eigenes PV-Prognosemodell und Sauberkeit",
+        "aenderungen": [
+            "PV-Prognose aus eigenem Modell: Open-Meteo-Einstrahlung je Dachflaeche x gelerntes Kennfeld (Verschattung, Wirkungsgrad) – trainiert aus der HA-Statistik",
+            "Sauberkeit der Anlage wird laufend geschaetzt, mit Reinigungshinweis und Knopf 'Anlage gereinigt'",
+            "Prognose-Diagramm mit Vergleich zur HA-Prognose (Energie-Dashboard)",
+            "Neue HA-Sensoren: PV-Prognose heute/Rest/morgen, PV-Sauberkeit",
+            "Neue Optionen: pv_flaechen, Sensoren fuer die gemessene PV-Erzeugung",
+        ],
+    },
     {
         "version": "0.5.1",
         "datum": "2026-10-03",

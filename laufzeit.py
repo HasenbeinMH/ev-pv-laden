@@ -20,6 +20,7 @@ import protokoll
 from erfassung import Erfassung
 from ha_client import IST_ADDON, HAClient, verbindung_aus_umgebung
 from prognose import ABFRAGE_S as PROGNOSE_S, Prognose
+from pvprognose import PVPrognose
 from prozessabbild import Prozessabbild
 from regelung import Regelung
 from treiber import Aktion, TreiberIds
@@ -45,7 +46,11 @@ class Laufzeit:
         self.zyklus_fehler: str | None = None
         self.simulator = None
         self.treiber: TreiberIds | None = None
-        self.prognose = Prognose()
+        # PV-Prognose: eigenes Modell; die HA-Prognose (Energie-Dashboard) dient als Vergleich
+        # und als Ersatz, solange das eigene Modell noch nicht trainiert ist
+        self.prognose_eigen = Prognose()
+        self.prognose_ha = Prognose()
+        self.pv: PVPrognose | None = None
         # Letzte Aktionen des Treibers fuer die Oberflaeche: (Zeit, Text, Ergebnis)
         self.aktionen: deque = deque(maxlen=60)
         self._trocken_letzt: frozenset = frozenset()
@@ -80,10 +85,12 @@ class Laufzeit:
         daten = verbindung_aus_umgebung()
         if os.environ.get("EVPV_SIMULATION") and not IST_ADDON:
             # Nur Entwicklung: Anlagenmodell statt Home Assistant
-            from simulation import LiveSimulator, prognose_simuliert
+            from simulation import LiveSimulator, prognose_simuliert, pvmodell_demo
             self.simulator = LiveSimulator(self.konfig, self.abbild, self.regelung)
             jetzt = datetime.now(self.erfassung.tz)
-            self.prognose.setzen(prognose_simuliert(jetzt), jetzt)
+            self.prognose_eigen.setzen(prognose_simuliert(jetzt), jetzt)
+            self.pv = PVPrognose(self.konfig, self.prognose_eigen)
+            self.pv.modell, self.pv.zustand = pvmodell_demo(), "Simulation"
             self.ha_fehler = "Simulation (EVPV_SIMULATION) – keine Verbindung zu Home Assistant"
             log.warning(self.ha_fehler)
         elif daten is None:
@@ -95,6 +102,8 @@ class Laufzeit:
             self.ha.schreiben_gesperrt = self.konfig.trockenlauf
             self._tasks.append(asyncio.create_task(self.ha.laufen(), name="ha_client"))
             self._tasks.append(asyncio.create_task(self._prognose_holen(), name="prognose"))
+            self.pv = PVPrognose(self.konfig, self.prognose_eigen)
+            self._tasks.append(asyncio.create_task(self.pv.laufen(self.ha), name="pvmodell"))
 
         zugang = await mqtt_ha.zugang_holen()
         if zugang is None:
@@ -124,7 +133,8 @@ class Laufzeit:
                                                      self.regelung.pgrid_v, werte))
                 if self.erfassung.senden_noetig and self.mqtt:
                     self.mqtt.zustand_setzen({**self.erfassung.mqtt_zustand(),
-                                              **self.regelung.mqtt_zustand()})
+                                              **self.regelung.mqtt_zustand(),
+                                              **self._pv_mqtt()})
                 self.erfassung.senden_noetig = False
                 self.zyklus_fehler = None
             except Exception as e:
@@ -142,15 +152,29 @@ class Laufzeit:
             if self.ha and self.ha.verbunden:
                 try:
                     antwort = await self.ha.anfrage({"type": "energy/solar_forecast"})
-                    self.prognose.setzen(antwort or {}, datetime.now(self.erfassung.tz))
-                    if self.prognose.fehler:
-                        log.info("PV-Prognose: %s", self.prognose.fehler)
+                    self.prognose_ha.setzen(antwort or {}, datetime.now(self.erfassung.tz))
+                    if self.prognose_ha.fehler:
+                        log.info("PV-Prognose (HA): %s", self.prognose_ha.fehler)
                     await asyncio.sleep(PROGNOSE_S)
                     continue
                 except Exception as e:
-                    self.prognose.fehler = f"Abfrage fehlgeschlagen: {e}"
+                    self.prognose_ha.fehler = f"Abfrage fehlgeschlagen: {e}"
                     log.warning("PV-Prognose: %s", e)
             await asyncio.sleep(30)
+
+    def _pv_mqtt(self) -> dict:
+        p, _ = self.prognose()
+        u = p.uebersicht(datetime.now(self.erfassung.tz)) if p.werte else {}
+        s = self.pv.modell.sauberkeit if self.pv else None
+        return {"pv_prognose_heute": u.get("heute_kwh"), "pv_prognose_rest_heute": u.get("heute_rest_kwh"),
+                "pv_prognose_morgen": u.get("morgen_kwh"),
+                "pv_sauberkeit": None if s is None else round(s * 100)}
+
+    def prognose(self) -> tuple[Prognose, str]:
+        """Angezeigte Prognose: eigenes Modell, sonst HA (Energie-Dashboard)."""
+        if self.prognose_eigen.werte:
+            return self.prognose_eigen, "eigenes Modell"
+        return self.prognose_ha, "Home Assistant (Energie-Dashboard)"
 
     def _ausfuehren(self, aktionen: list[Aktion]) -> None:
         jetzt = datetime.now().strftime("%H:%M:%S")

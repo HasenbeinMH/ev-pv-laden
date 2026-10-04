@@ -10,7 +10,7 @@ nicht nur im Bedienbild.
 import json
 import os
 import re
-from dataclasses import dataclass, fields
+from dataclasses import MISSING, dataclass, field, fields
 
 DATA_DIR = os.environ.get("EVPV_DATA", "/data")
 OPTIONS_DATEI = os.environ.get("EVPV_OPTIONS", os.path.join(DATA_DIR, "options.json"))
@@ -56,6 +56,14 @@ class Konfig:
     ev_tracker_url: str = ""
     ev_tracker_token: str = ""
     akku_als_netz: bool = False
+    # PV-Prognose (eigenes Modell): Dachflaechen und Quelle der gemessenen PV-Erzeugung
+    pv_flaechen: list = field(default_factory=list)
+    # Entweder ein Energiezaehler der PV-Erzeugung (kWh) ...
+    sensor_pv_energie: str = ""
+    # ... oder SolarEdge-Hybrid: PV = DC-Leistung + Akku geladen - Akku entladen
+    sensor_pv_dc_leistung: str = "sensor.se_modbus_daten_dc_power"
+    sensor_akku_geladen: str = "sensor.se_modbus_daten_battery1_charged"
+    sensor_akku_entladen: str = "sensor.se_modbus_daten_battery1_discharged"
 
     @property
     def strom_1ph_max_a(self) -> int:
@@ -104,6 +112,30 @@ def pruefen(k: Konfig) -> list[str]:
         f.append(f"log_level ungueltig: '{k.log_level}'")
     if k.ev_tracker_url and not k.ev_tracker_url.startswith(("http://", "https://")):
         f.append("ev_tracker_url muss mit http:// oder https:// beginnen")
+    for name in ("sensor_pv_energie", "sensor_pv_dc_leistung", "sensor_akku_geladen", "sensor_akku_entladen"):
+        wert = getattr(k, name)
+        if wert and not _ENTITY.match(wert):
+            f.append(f"{name} ungueltig: '{wert}'")
+    namen = set()
+    for i, fl in enumerate(k.pv_flaechen):
+        if not isinstance(fl, dict):
+            f.append(f"pv_flaechen[{i}]: Eintrag mit name, neigung, azimut, kwp erwartet")
+            continue
+        try:
+            if not str(fl.get("name", "")).strip():
+                raise ValueError("name fehlt")
+            if not 0 <= float(fl["neigung"]) <= 90:
+                raise ValueError("neigung 0..90")
+            if not 0 <= float(fl["azimut"]) <= 360:
+                raise ValueError("azimut 0..360 (0 Nord, 90 Ost, 180 Sued)")
+            if not 0.05 <= float(fl["kwp"]) <= 100:
+                raise ValueError("kwp 0,05..100")
+        except (KeyError, TypeError, ValueError) as e:
+            f.append(f"pv_flaechen[{i}] ungueltig: {e}")
+            continue
+        if fl["name"] in namen:
+            f.append(f"pv_flaechen: Name '{fl['name']}' doppelt")
+        namen.add(fl["name"])
     return f
 
 
@@ -123,6 +155,12 @@ def laden(pfad: str = OPTIONS_DATEI) -> Konfig:
     werte, fehler = {}, []
     for feld in fields(Konfig):
         if feld.name not in roh:
+            continue
+        if feld.default is MISSING:   # Listen (default_factory)
+            if not isinstance(roh[feld.name], list):
+                fehler.append(f"{feld.name}: Liste erwartet")
+            else:
+                werte[feld.name] = roh[feld.name]
             continue
         wert, typ = roh[feld.name], type(feld.default)
         # bool zuerst: in Python ist bool eine Unterklasse von int

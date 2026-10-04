@@ -198,3 +198,20 @@ def prognose_simuliert(jetzt) -> dict:
             t = tag0 + timedelta(days=tag, hours=h)
             wh[t.isoformat()] = round(max(0.0, math.sin((h - 7) / 12 * math.pi)) * 6500 * faktor)
     return {"sim": {"wh_hours": wh}}
+
+
+def pvmodell_demo():
+    """Nur Entwicklung: trainiert wirkendes Modell mit erfundenem Sauberkeitsverlauf."""
+    from datetime import date, timedelta
+    import pvmodell as pm
+    wochen = {}
+    montag = date.today() - timedelta(days=date.today().weekday())
+    for i in range(60):
+        w = montag - timedelta(weeks=59 - i)
+        if w.month in pm.WINTER_OHNE_SCHMUTZ:
+            continue
+        wochen[w.isoformat()] = round(0.98 - 0.25 * ((i % 30) / 30), 3)
+    letzte = max(wochen)
+    return pm.Modell(k_prognose={"demo": 1.0}, sauberkeit=wochen[letzte], sauberkeit_stand=letzte,
+                     sauberkeit_mittel=0.85, sauberkeit_wochen=wochen, trainiert_am="2026-10-04T08:00:00+00:00",
+                     kennzahlen={"tage": 987, "felder": 139, "verlust_schmutz_prozent": 15.0})
