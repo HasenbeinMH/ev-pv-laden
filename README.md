@@ -53,3 +53,15 @@ Hausakku, Auto).
 Aufgezeichnete Tage als Testdaten: `python dev/export_ha.py 2026-10-01 10:00 16:00`
 (braucht `HA_URL`/`HA_TOKEN`) legt eine CSV in `tests/daten/` ab; `pytest` spielt sie mit
 der Strategie und dem Anlagenmodell nach.
+
+## Lizenz
+
+EV PV-Laden steht unter der **GNU General Public License v3.0** (GPL-3.0) – siehe [LICENSE](LICENSE).
+Nutzen, ändern und weitergeben ist erlaubt; geänderte Fassungen müssen ebenfalls unter der
+GPL-3.0 und mit Quelltext weitergegeben werden. Keine Gewährleistung – insbesondere für das
+Schreiben auf Wallbox und Wechselrichter gilt: Betrieb auf eigene Verantwortung, zuerst im
+Trockenlauf prüfen.
+
+Enthaltene Fremdkomponenten (mit der GPL-3.0 vereinbar):
+- [Apache ECharts](https://echarts.apache.org) – `webapp/static/echarts.min.js`, Apache License 2.0
+- Icons von [Lucide](https://lucide.dev) – ISC-Lizenz
