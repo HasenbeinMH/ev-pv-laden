@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.11.0] - 2026-10-05
+
+Min + PV: Verhalten ohne PV.
+
+- Neue Einstellung **„Min + PV, wenn keine PV da ist“** (Einstellungen und HA-Auswahl „Min + PV ohne PV“):
+  - *Mindestleistung weiter* – wie bisher, 6 A aus dem Netz
+  - *voll aus dem Netz* – ohne PV mit voller Leistung laden (wie Sofort), morgens zurück zu Min + PV
+  - *Pause bis PV da ist* – ohne PV nicht laden, morgens startet Min + PV von selbst
+- „Keine PV“ wird an der gemessenen PV-Leistung erkannt, mit Hysterese: unter 50 W für 15 min, „PV wieder da“ über 300 W für 5 min (alle Werte einstellbar). Ohne PV-Sensor bleibt Min + PV unverändert
+
 ## [0.10.5] - 2026-10-05
 
 - Reiter Prognose: die **gemessene PV-Erzeugung von heute** steht als grüne Stundenbalken neben der Prognose; im Kopf „bis jetzt gemessen … gegenüber Prognose … (±x %)“

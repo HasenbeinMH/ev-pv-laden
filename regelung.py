@@ -15,8 +15,9 @@ from datetime import datetime, timezone, tzinfo
 import datenbank as db
 from konfig import Konfig
 from prozessabbild import Prozessabbild
-from strategie import (MODI, SPANNUNG_V, TREIBER, WIEDERANLAUF, ZIELZEIT, Ausgang, Eingang, Parameter,
-                       Strategie, pgrid_virtuell)
+from strategie import (MIN_PV, MODI, NUR_PV, OHNE_PV, SOFORT, SPANNUNG_V, TREIBER, WIEDERANLAUF, ZIELZEIT,
+                       Ausgang, Eingang, Parameter, Strategie, pgrid_virtuell)
+from tageslicht import Tageslicht
 from zielzeit import Plan, SocSchaetzer, Zielzeit
 
 log = logging.getLogger("regelung")
@@ -50,6 +51,9 @@ class Regelung:
         self.soc = SocSchaetzer(konfig.akku_kapazitaet_kwh, konfig.ladewirkungsgrad,
                                 db.einstellung(SOC_SCHLUESSEL))
         self.zielzeit = Zielzeit()
+        # Min + PV ohne PV (Nacht): Mindestleistung / voll aus dem Netz / Pause
+        self.tageslicht = Tageslicht()
+        self.nacht: bool | None = None
         self.plan: Plan | None = None
         self.modus_wirksam: str = param.modus
         self.tz: tzinfo = timezone.utc
@@ -115,7 +119,19 @@ class Regelung:
                     pa.wert("auto_steckt", mono), akku_vorhanden=akku_da)
         soc = self._soc_zyklus(mono, jetzt)
         p = self.param
-        if p.modus == ZIELZEIT:
+        self.nacht = self.tageslicht.zyklus(
+            mono, pa.wert("pv_w", mono) if "pv_w" in pa.werte else None,
+            p.ohne_pv_unter_w, p.ohne_pv_unter_s, p.ohne_pv_ueber_w, p.ohne_pv_ueber_s)
+        if p.modus == MIN_PV and self.nacht and p.ohne_pv != "mindest":
+            # Ohne PV: voll aus dem Netz (wie Sofort) oder Pause (wie Nur PV – ohne Ueberschuss
+            # laedt nichts; morgens startet Min + PV von selbst wieder)
+            self.plan = None
+            self.modus_wirksam = SOFORT if p.ohne_pv == "voll" else NUR_PV
+            a = self.strategie.schritt(e, self.modus_wirksam)
+            if e.steckt is True:
+                a.grund = ("Ohne PV: volle Leistung aus dem Netz" if p.ohne_pv == "voll"
+                           else f"Ohne PV: Pause bis PV da ist ({a.grund})")
+        elif p.modus == ZIELZEIT:
             self.plan = self.zielzeit.planen(
                 datetime.fromtimestamp(jetzt, self.tz), p.abfahrt, p.ziel_soc, p.puffer_min, soc,
                 self.konfig.akku_kapazitaet_kwh, self.konfig.ladewirkungsgrad, self.p_plan, e.steckt)
@@ -149,7 +165,9 @@ class Regelung:
         a = self.aus
         return {
             "modus": self.param.modus, "modi": MODI, "parameter": self.param.als_dict(),
-            "treiber_wahl": TREIBER, "wiederanlauf_wahl": WIEDERANLAUF,
+            "treiber_wahl": TREIBER, "wiederanlauf_wahl": WIEDERANLAUF, "ohne_pv_wahl": OHNE_PV,
+            "ohne_pv_aktiv": bool(self.nacht) if self.nacht is not None else None,
+            "pv_sensor": "pv_w" in self.abbild.werte,
             "start_wirksam": self.strategie.start_wirksam(), "stopp_wirksam": self.strategie.stopp_wirksam(),
             "p_min": self.p_min, "p_max": self.p_max, "treiber": self.treiber,
             "trockenlauf": self.trockenlauf,

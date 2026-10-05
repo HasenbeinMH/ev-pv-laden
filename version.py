@@ -8,9 +8,19 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.10.5"
+VERSION = "0.11.0"
 
 CHANGELOG = [
+    {
+        "version": "0.11.0",
+        "datum": "2026-10-05",
+        "titel": "Min + PV: Verhalten ohne PV",
+        "aenderungen": [
+            "Neue Einstellung fuer Min + PV, wenn keine PV da ist (Nacht): Mindestleistung weiter, voll aus dem Netz oder Pause bis PV da ist",
+            "Erkennung ueber die gemessene PV-Leistung mit Hysterese: keine PV unter 50 W fuer 15 min, PV wieder da ueber 300 W fuer 5 min (einstellbar)",
+            "Auch als HA-Auswahl 'Min + PV ohne PV'",
+        ],
+    },
     {
         "version": "0.10.5",
         "datum": "2026-10-05",

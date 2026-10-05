@@ -380,6 +380,9 @@ const PARAM = [
   ["start_w", "Start ab Überschuss (W)"], ["start_verz_s", "… anliegend für (s)"],
   ["stopp_w", "Stopp unter Überschuss (W)"], ["stopp_verz_s", "… anliegend für (s)"],
   ["min_ladedauer_s", "Mindestladedauer (s)"], ["min_pause_s", "Mindestpause (s)"],
+  ["ohne_pv", "Min + PV, wenn keine PV da ist (Nacht)", "ohne_pv_wahl"],
+  ["ohne_pv_unter_w", "„keine PV“ unter (W)"], ["ohne_pv_unter_s", "… für (s)"],
+  ["ohne_pv_ueber_w", "„PV wieder da“ über (W)"], ["ohne_pv_ueber_s", "… für (s)"],
   ["wiederanlauf", "Lädt nach Pause nicht wieder an (nur Treiber ids)", "wiederanlauf_wahl"],
   ["wiederanlauf_s", "… erkannt nach Freigabe ohne Ladung (s)"],
 ];
@@ -496,7 +499,9 @@ async function regelung() {
     $("treiber-info").textContent = (aktivA !== (gewaehlt === "a") ? "Wechsel folgt, sobald nicht geladen wird · " : "")
       + `Start ab ${zahl(Math.round(r.start_wirksam))} W, Stopp unter ${zahl(Math.round(r.stopp_wirksam))} W`;
     $("md-info").textContent = `Start ab ${zahl(r.start_wirksam / 1000, 1)} kW Überschuss, `
-      + `Stopp unter ${zahl(r.stopp_wirksam / 1000, 1)} kW · Hausakku zuerst bis ${zahl(r.parameter.akku_soc_schwelle)} %`;
+      + `Stopp unter ${zahl(r.stopp_wirksam / 1000, 1)} kW · Hausakku zuerst bis ${zahl(r.parameter.akku_soc_schwelle)} %`
+      + (r.modus === "min_pv" ? ` · ohne PV: ${r.ohne_pv_wahl[r.parameter.ohne_pv]}`
+         + (r.ohne_pv_aktiv ? " (jetzt aktiv)" : "") : "");
     if (r.zielzeit) zielzeitZeigen(r);
     const a = r.ausgang;
     if (a) {

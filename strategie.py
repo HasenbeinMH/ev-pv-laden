@@ -28,6 +28,8 @@ AUS, NUR_PV, MIN_PV, SOFORT, ZIELZEIT = "aus", "nur_pv", "min_pv", "sofort", "zi
 MODI = {AUS: "Aus", NUR_PV: "Nur PV", MIN_PV: "Min + PV", SOFORT: "Sofort", ZIELZEIT: "Zielzeit"}
 
 TREIBER = {"ids": "ids (go-e regelt)", "a": "A (Add-on stellt Strom, dreiphasig)"}
+OHNE_PV = {"mindest": "Mindestleistung weiter", "voll": "voll aus dem Netz",
+           "pause": "Pause bis PV da ist"}
 WIEDERANLAUF = {"melden": "nur melden", "fup": "fup kurz umschalten",
                 "fup_dann_a": "fup umschalten, dann Treiber A"}
 
@@ -54,6 +56,11 @@ class Parameter:
     ziel_soc: float = 80.0              # Zielzeit: Ziel-SoC des Autos (%) ...
     abfahrt: str = "07:00"              # ... zur naechsten Abfahrt um diese Uhrzeit
     puffer_min: float = 30.0            # ... mit so viel Reserve vor der Abfahrt
+    ohne_pv: str = "mindest"            # Min + PV, wenn keine PV da ist (Nacht): mindest/voll/pause
+    ohne_pv_unter_w: float = 50.0       # "keine PV": PV unter ... W ...
+    ohne_pv_unter_s: float = 900.0      # ... so lange
+    ohne_pv_ueber_w: float = 300.0      # "PV wieder da": PV ueber ... W ...
+    ohne_pv_ueber_s: float = 300.0      # ... so lange
 
     def pruefen(self) -> list[str]:
         f = []
@@ -75,6 +82,13 @@ class Parameter:
             f.append(f"Wiederanlauf-Maßnahme '{self.wiederanlauf}' unbekannt")
         if not 60 <= self.wiederanlauf_s <= 3600:
             f.append("Wiederanlauf-Wartezeit muss zwischen 60 und 3600 s liegen")
+        if self.ohne_pv not in OHNE_PV:
+            f.append(f"Verhalten ohne PV '{self.ohne_pv}' unbekannt")
+        if not 0 <= self.ohne_pv_unter_w < self.ohne_pv_ueber_w <= 5000:
+            f.append("Schwellen ohne PV: 0 ≤ 'keine PV' < 'PV wieder da' ≤ 5000 W")
+        for name in ("ohne_pv_unter_s", "ohne_pv_ueber_s"):
+            if not 0 <= getattr(self, name) <= 7200:
+                f.append(f"{name} muss zwischen 0 und 7200 s liegen")
         if not 10 <= self.ziel_soc <= 100:
             f.append("Ziel-SoC muss zwischen 10 und 100 % liegen")
         if not UHRZEIT.match(str(self.abfahrt)):
