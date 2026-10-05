@@ -28,7 +28,7 @@ from dataclasses import dataclass
 import aiohttp
 import aiomqtt
 
-from strategie import MODI, OHNE_PV, TREIBER
+from strategie import MODI, TREIBER
 from version import VERSION
 
 log = logging.getLogger("mqtt")
@@ -177,7 +177,11 @@ def discovery_nutzlast() -> dict:
                                      "mdi:shield-check", konfig=True),
                             "value_template": "{{ value_json.trockenlauf }}",
                             "state_on": "ON", "state_off": "OFF"},
-            "ohne_pv": _select("Min + PV ohne PV", "ohne_pv", OHNE_PV.values(), "mdi:weather-night"),
+            # 0.11.0 hatte eine Auswahl "ohne_pv" – ersetzt durch den Schalter "nachtladen"
+            "ohne_pv": {"platform": "select"},
+            "nachtladen": {**_basis("switch", "Nachtladen (ohne PV voll aus dem Netz)", "nachtladen",
+                                    "mdi:weather-night"),
+                           "value_template": "{{ value_json.nachtladen }}", "state_on": "ON", "state_off": "OFF"},
             "akku_soc_schwelle": _number("Hausakku zuerst bis SoC", "akku_soc_schwelle", 0, 100, 1, "%",
                                          "mdi:home-battery"),
             # Zielzeit: SoC des Autos (eingeben = neuer Stand; Anzeige = hochgerechnet), Ziel, Abfahrt
@@ -230,8 +234,10 @@ def befehl_uebersetzen(schluessel: str, text: str) -> tuple[str, object]:
         return "modus", _rueckwaerts(MODI, text)
     if schluessel == "treiber_wahl":
         return "treiber", _rueckwaerts(TREIBER_NAMEN, text)
-    if schluessel == "ohne_pv":
-        return "ohne_pv", _rueckwaerts(OHNE_PV, text)
+    if schluessel == "nachtladen":
+        if text not in ("ON", "OFF"):
+            raise ValueError(f"ON/OFF erwartet, nicht '{text}'")
+        return "ohne_pv", "voll" if text == "ON" else "pause"
     if schluessel == "trockenlauf":
         if text not in ("ON", "OFF"):
             raise ValueError(f"ON/OFF erwartet, nicht '{text}'")
@@ -253,7 +259,7 @@ def _rueckwaerts(namen: dict, text: str) -> str:
 def bedien_zustand(param, trockenlauf: bool, auto_soc: float | None) -> dict:
     """Zustandsfelder der Bedien-Entitaeten (im selben JSON wie die Sensoren)."""
     return {"lademodus": MODI.get(param.modus), "treiber_wahl": TREIBER_NAMEN.get(param.treiber),
-            "ohne_pv": OHNE_PV.get(param.ohne_pv),
+            "nachtladen": "ON" if param.ohne_pv == "voll" else "OFF",
             "trockenlauf": "ON" if trockenlauf else "OFF",
             "akku_soc_schwelle": param.akku_soc_schwelle, "ziel_soc": param.ziel_soc,
             "abfahrt": param.abfahrt, "puffer_min": param.puffer_min,

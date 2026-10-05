@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.11.0"
+VERSION = "0.11.1"
 
 CHANGELOG = [
+    {
+        "version": "0.11.1",
+        "datum": "2026-10-05",
+        "titel": "Schalter Nachtladen im Dashboard",
+        "aenderungen": [
+            "Statt der Auswahl ein Schalter 'Nachtladen' im Dashboard und in HA: an = ohne PV voll aus dem Netz, aus = Pause bis PV da ist",
+            "Gilt fuer Nur PV und Min + PV; 'Mindestleistung weiter' entfaellt (gespeichert -> aus)",
+        ],
+    },
     {
         "version": "0.11.0",
         "datum": "2026-10-05",

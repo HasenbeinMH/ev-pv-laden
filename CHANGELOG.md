@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.11.1] - 2026-10-05
+
+- **Schalter „Nachtladen“** direkt im Dashboard unter den Lademodi und in HA (`switch.ev_pv_laden_nachtladen`): *an* = ohne PV voll aus dem Netz, *aus* = Pause bis wieder PV da ist (Standard)
+- Gilt für *Nur PV* und *Min + PV*. Die Auswahl „Mindestleistung weiter“ entfällt; war sie gespeichert, steht der Schalter auf *aus*. Die HA-Auswahl „Min + PV ohne PV“ wird entfernt
+
 ## [0.11.0] - 2026-10-05
 
 Min + PV: Verhalten ohne PV.

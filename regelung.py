@@ -122,9 +122,9 @@ class Regelung:
         self.nacht = self.tageslicht.zyklus(
             mono, pa.wert("pv_w", mono) if "pv_w" in pa.werte else None,
             p.ohne_pv_unter_w, p.ohne_pv_unter_s, p.ohne_pv_ueber_w, p.ohne_pv_ueber_s)
-        if p.modus == MIN_PV and self.nacht and p.ohne_pv != "mindest":
-            # Ohne PV: voll aus dem Netz (wie Sofort) oder Pause (wie Nur PV – ohne Ueberschuss
-            # laedt nichts; morgens startet Min + PV von selbst wieder)
+        if p.modus in (MIN_PV, NUR_PV) and self.nacht:
+            # Schalter Nachtladen – an: voll aus dem Netz (wie Sofort); aus: Pause (wie Nur PV –
+            # ohne Ueberschuss laedt nichts; morgens laufen Nur PV / Min + PV von selbst weiter)
             self.plan = None
             self.modus_wirksam = SOFORT if p.ohne_pv == "voll" else NUR_PV
             a = self.strategie.schritt(e, self.modus_wirksam)
@@ -167,6 +167,7 @@ class Regelung:
             "modus": self.param.modus, "modi": MODI, "parameter": self.param.als_dict(),
             "treiber_wahl": TREIBER, "wiederanlauf_wahl": WIEDERANLAUF, "ohne_pv_wahl": OHNE_PV,
             "ohne_pv_aktiv": bool(self.nacht) if self.nacht is not None else None,
+            "nachtladen": self.param.ohne_pv == "voll",
             "pv_sensor": "pv_w" in self.abbild.werte,
             "start_wirksam": self.strategie.start_wirksam(), "stopp_wirksam": self.strategie.stopp_wirksam(),
             "p_min": self.p_min, "p_max": self.p_max, "treiber": self.treiber,

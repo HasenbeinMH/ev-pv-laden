@@ -4,6 +4,7 @@ import datenbank as db
 from konfig import Konfig
 from prozessabbild import Prozessabbild
 from regelung import Regelung
+import mqtt_ha
 from strategie import MIN_PV, NUR_PV, SOFORT, Parameter
 from tageslicht import Tageslicht
 
@@ -39,6 +40,15 @@ def test_parameter_pruefen():
     assert Parameter(ohne_pv="nacht").pruefen()
     assert Parameter(ohne_pv_unter_w=400, ohne_pv_ueber_w=300).pruefen()
     assert not Parameter(ohne_pv="pause").pruefen()
+    assert Parameter(ohne_pv="mindest").pruefen()                       # gibt es nicht mehr ...
+    assert Parameter.aus_dict({"ohne_pv": "mindest", "modus": "min_pv"}).ohne_pv == "pause"   # ... Umstellung
+    assert Parameter().ohne_pv == "pause"
+
+
+def test_schalter_nachtladen_aus_ha():
+    assert mqtt_ha.befehl_uebersetzen("nachtladen", "ON") == ("ohne_pv", "voll")
+    assert mqtt_ha.befehl_uebersetzen("nachtladen", "OFF") == ("ohne_pv", "pause")
+    assert mqtt_ha.bedien_zustand(Parameter(ohne_pv="voll"), True, None)["nachtladen"] == "ON"
 
 
 @pytest.fixture
@@ -54,9 +64,10 @@ def reg(tmp_path, monkeypatch):
     return r
 
 
-@pytest.mark.parametrize("ohne_pv, erwartet", [("mindest", MIN_PV), ("voll", SOFORT), ("pause", NUR_PV)])
-def test_min_pv_nachts(reg, ohne_pv, erwartet):
-    reg.parameter_setzen({"modus": MIN_PV, "ohne_pv": ohne_pv})
+@pytest.mark.parametrize("modus, ohne_pv, erwartet", [(MIN_PV, "voll", SOFORT), (MIN_PV, "pause", NUR_PV),
+                                                       (NUR_PV, "voll", SOFORT), (NUR_PV, "pause", NUR_PV)])
+def test_nachts(reg, modus, ohne_pv, erwartet):
+    reg.parameter_setzen({"modus": modus, "ohne_pv": ohne_pv})
     a = reg.zyklus(1.0)
     assert reg.modus_wirksam == erwartet
     if ohne_pv == "voll":

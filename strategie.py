@@ -28,8 +28,8 @@ AUS, NUR_PV, MIN_PV, SOFORT, ZIELZEIT = "aus", "nur_pv", "min_pv", "sofort", "zi
 MODI = {AUS: "Aus", NUR_PV: "Nur PV", MIN_PV: "Min + PV", SOFORT: "Sofort", ZIELZEIT: "Zielzeit"}
 
 TREIBER = {"ids": "ids (go-e regelt)", "a": "A (Add-on stellt Strom, dreiphasig)"}
-OHNE_PV = {"mindest": "Mindestleistung weiter", "voll": "voll aus dem Netz",
-           "pause": "Pause bis PV da ist"}
+# Schalter "Nachtladen" (Nur PV und Min + PV, wenn keine PV da ist): voll = an, pause = aus
+OHNE_PV = {"voll": "voll aus dem Netz", "pause": "Pause bis PV da ist"}
 WIEDERANLAUF = {"melden": "nur melden", "fup": "fup kurz umschalten",
                 "fup_dann_a": "fup umschalten, dann Treiber A"}
 
@@ -56,7 +56,7 @@ class Parameter:
     ziel_soc: float = 80.0              # Zielzeit: Ziel-SoC des Autos (%) ...
     abfahrt: str = "07:00"              # ... zur naechsten Abfahrt um diese Uhrzeit
     puffer_min: float = 30.0            # ... mit so viel Reserve vor der Abfahrt
-    ohne_pv: str = "mindest"            # Min + PV, wenn keine PV da ist (Nacht): mindest/voll/pause
+    ohne_pv: str = "pause"              # Nachtladen: ohne PV voll aus dem Netz ("voll") oder Pause
     ohne_pv_unter_w: float = 50.0       # "keine PV": PV unter ... W ...
     ohne_pv_unter_s: float = 900.0      # ... so lange
     ohne_pv_ueber_w: float = 300.0      # "PV wieder da": PV ueber ... W ...
@@ -110,6 +110,8 @@ class Parameter:
             if d and feld.name in d:
                 wert = d[feld.name]
                 setattr(p, feld.name, str(wert) if feld.type in ("str", str) else float(wert))
+        if p.ohne_pv == "mindest":          # 0.11.0 kannte noch "Mindestleistung weiter"
+            p.ohne_pv = "pause"
         return p
 
 

@@ -257,6 +257,10 @@ function autoKarte() {
   if (z.soc_quelle) zeilen.push(`SoC: ${esc(z.soc_quelle)} ${zahl(z.soc_gesetzt_wert)} % (${esc(uhr(z.soc_gesetzt))}), hochgerechnet`);
   $("ac-plan").innerHTML = zeilen.map(t => `<div>${t}</div>`).join("");
 }
+$("nachtladen").onclick = () => {
+  if (!letzteRegelung) return;
+  parameterSenden({ohne_pv: letzteRegelung.nachtladen ? "pause" : "voll"});
+};
 $("ac-pause").onclick = () => {
   const r = letzteRegelung;
   if (!r) return;
@@ -380,7 +384,6 @@ const PARAM = [
   ["start_w", "Start ab Überschuss (W)"], ["start_verz_s", "… anliegend für (s)"],
   ["stopp_w", "Stopp unter Überschuss (W)"], ["stopp_verz_s", "… anliegend für (s)"],
   ["min_ladedauer_s", "Mindestladedauer (s)"], ["min_pause_s", "Mindestpause (s)"],
-  ["ohne_pv", "Min + PV, wenn keine PV da ist (Nacht)", "ohne_pv_wahl"],
   ["ohne_pv_unter_w", "„keine PV“ unter (W)"], ["ohne_pv_unter_s", "… für (s)"],
   ["ohne_pv_ueber_w", "„PV wieder da“ über (W)"], ["ohne_pv_ueber_s", "… für (s)"],
   ["wiederanlauf", "Lädt nach Pause nicht wieder an (nur Treiber ids)", "wiederanlauf_wahl"],
@@ -499,9 +502,11 @@ async function regelung() {
     $("treiber-info").textContent = (aktivA !== (gewaehlt === "a") ? "Wechsel folgt, sobald nicht geladen wird · " : "")
       + `Start ab ${zahl(Math.round(r.start_wirksam))} W, Stopp unter ${zahl(Math.round(r.stopp_wirksam))} W`;
     $("md-info").textContent = `Start ab ${zahl(r.start_wirksam / 1000, 1)} kW Überschuss, `
-      + `Stopp unter ${zahl(r.stopp_wirksam / 1000, 1)} kW · Hausakku zuerst bis ${zahl(r.parameter.akku_soc_schwelle)} %`
-      + (r.modus === "min_pv" ? ` · ohne PV: ${r.ohne_pv_wahl[r.parameter.ohne_pv]}`
-         + (r.ohne_pv_aktiv ? " (jetzt aktiv)" : "") : "");
+      + `Stopp unter ${zahl(r.stopp_wirksam / 1000, 1)} kW · Hausakku zuerst bis ${zahl(r.parameter.akku_soc_schwelle)} %`;
+    const nl = $("nachtladen"), wirkt = ["nur_pv", "min_pv"].includes(r.modus);
+    nl.setAttribute("aria-checked", r.nachtladen ? "true" : "false");
+    $("nachtladen-info").textContent = (r.nachtladen ? "ohne PV voll aus dem Netz" : "ohne PV Pause bis PV da ist")
+      + (!wirkt ? " · gilt für Nur PV und Min + PV" : r.ohne_pv_aktiv ? " · jetzt aktiv" : "");
     if (r.zielzeit) zielzeitZeigen(r);
     const a = r.ausgang;
     if (a) {
