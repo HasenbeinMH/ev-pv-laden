@@ -54,6 +54,16 @@ class Tagesverlauf:
         self.punkte = neu
         return len(alt)
 
+    def stunden_wh(self, seit_epoch: float, groesse: str = "pv") -> list[tuple[int, float, int]]:
+        """Energie je Stunde aus den Minutenmitteln: (Stundenbeginn, Wh, Minuten mit Wert).
+        Die laufende Stunde zaehlt bis jetzt (Minuten < 60)."""
+        stunden: dict[int, list[float]] = {}
+        for t, m in self.punkte:
+            v = m.get(groesse)
+            if t >= seit_epoch and v is not None:
+                stunden.setdefault(int(t // 3600) * 3600, []).append(max(v, 0.0))
+        return [(h, sum(w) / 60.0, len(w)) for h, w in sorted(stunden.items())]
+
     def liste(self, seit_epoch: float) -> dict:
         daten = [[t] + [m[g] for g in GROESSEN] for t, m in self.punkte if t >= seit_epoch]
         return {"spalten": ("zeit",) + GROESSEN, "daten": daten}

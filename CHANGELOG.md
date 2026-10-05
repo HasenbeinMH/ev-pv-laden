@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.10.5] - 2026-10-05
+
+- Reiter Prognose: die **gemessene PV-Erzeugung von heute** steht als grüne Stundenbalken neben der Prognose; im Kopf „bis jetzt gemessen … gegenüber Prognose … (±x %)“
+- Dashboard „Heute“: die PV-Prognose als gestrichelte Linie über der gemessenen PV-Kurve – Abweichungen sieht man ohne Reiterwechsel
+
 ## [0.10.4] - 2026-10-04
 
 - Dashboard „Heute“: Nach einem Neustart oder Update lädt das Add-on den Verlauf seit Mitternacht aus der HA-Historie nach (PV, Haus, Auto) – die Kurve beginnt nicht mehr erst beim Add-on-Start

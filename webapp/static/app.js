@@ -292,7 +292,11 @@ async function heuteLaden() {
       yAxis: {...a.y, axisLabel: {...a.y.axisLabel,
         formatter: x => zahl(x / 1000, Number.isInteger(x / 1000) ? 0 : 1) + " kW"}},
       series: [reihe("PV", "pv", "--solar", true), reihe("Haus", "haus", "--verbrauch", true),
-               reihe("Auto", "auto", "--auto", true)],
+               reihe("Auto", "auto", "--auto", true),
+               ...(prognose && prognose.stunden ? [{name: "PV-Prognose", type: "line", step: "middle",
+                 showSymbol: false, color: css("--solar"), lineStyle: {width: 1.5, type: "dashed"},
+                 data: prognose.stunden.map(s => [new Date(s.zeit).getTime() - 1800e3, s.wh])
+                   .filter(([t]) => t >= tag.getTime() && t < tag.getTime() + 86400e3)}] : [])],
     }, true);
     $("heute-unter").textContent = v.daten.length && v.daten[0][0] * 1000 > tag.getTime() + 3600e3
       ? "seit Add-on-Start " + new Date(v.daten[0][0] * 1000).toLocaleTimeString("de-DE", {hour: "2-digit", minute: "2-digit"})
@@ -570,6 +574,11 @@ async function prognoseLaden() {
   $("prognose-quelle").textContent = prognose.quelle || "";
   $("prognose-quelle").className = "marke " + (prognose.quelle === "eigenes Modell" ? "trocken" : "");
   if (prognose.quelle) $("k-prognose-unter").textContent += " · " + prognose.quelle;
+  if (prognose.gemessen_kwh !== undefined && prognose.prognose_bis_jetzt_kwh) {
+    const abw = (prognose.gemessen_kwh / prognose.prognose_bis_jetzt_kwh - 1) * 100;
+    $("prognose-unter").textContent += ` · bis jetzt gemessen ${kwh(prognose.gemessen_kwh)} gegenüber Prognose `
+      + `${kwh(prognose.prognose_bis_jetzt_kwh)} (${abw >= 0 ? "+" : ""}${zahl(abw)} %)`;
+  }
   $("tb-prognose").textContent = prognose.verfuegbar ? kwh(prognose.heute_rest_kwh) : "–";
   prognoseZeichnen();
 }
@@ -580,11 +589,14 @@ function prognoseZeichnen() {
   const a = achsen();
   // Wh der Stunde (Zeitstempel = Stundenende) als mittlere Leistung in der Stundenmitte
   const daten = (prognose.stunden || []).map(s => [new Date(s.zeit).getTime() - 1800e3, s.wh]);
+  const gemessen = (prognose.gemessen || []).map(s => [new Date(s.zeit).getTime() - 1800e3, s.wh]);
   prognoseDiagramm.setOption({
     animation: false, grid: {left: 60, right: 16, top: 16, bottom: 30},
     tooltip: a.tooltip, xAxis: a.x, yAxis: a.y,
     legend: {top: 0, textStyle: {color: a.text}},
-    series: [{name: prognose.quelle || "PV-Prognose", type: "bar", barWidth: "60%", data: daten, color: css("--solar"),
+    series: [{name: "PV gemessen (heute)", type: "bar", barWidth: "35%", barGap: "0%", data: gemessen,
+              color: css("--einspeisung")},
+             {name: prognose.quelle || "PV-Prognose", type: "bar", barWidth: "35%", data: daten, color: css("--solar"),
               markLine: {symbol: "none", silent: true, label: {formatter: "jetzt", color: a.text},
                          lineStyle: {color: css("--text-2"), type: "dashed"}, data: [{xAxis: Date.now()}]}},
              ...(prognose.vergleich ? [{name: "Vergleich: Home Assistant", type: "line", step: "middle",

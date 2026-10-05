@@ -174,6 +174,19 @@ def api_prognose(request: Request):
     aus["quelle"] = quelle
     if p is not lz.prognose_ha and lz.prognose_ha.werte:
         aus["vergleich"] = lz.prognose_ha.uebersicht(jetzt)
+    # Gemessene PV-Erzeugung heute (Tageskurve) als Stundenwerte zum Vergleich
+    from datetime import timedelta
+    mitternacht = jetzt.replace(hour=0, minute=0, second=0, microsecond=0)
+    stunden = lz.tagesverlauf.stunden_wh(mitternacht.timestamp())
+    aus["gemessen"] = [{"zeit": (datetime.fromtimestamp(h, lz.erfassung.tz) + timedelta(hours=1)).isoformat(),
+                        "wh": round(wh), "minuten": n} for h, wh, n in stunden]
+    if stunden:
+        aus["gemessen_kwh"] = round(sum(wh for _, wh, _ in stunden) / 1000, 2)
+        # Prognose fuer denselben Zeitraum (ab der ersten gemessenen Minute bis jetzt)
+        von = datetime.fromtimestamp(lz.tagesverlauf.punkte[0][0], lz.erfassung.tz) if lz.tagesverlauf.punkte else mitternacht
+        # ... bis zum Ende der letzten abgeschlossenen Minute – derselbe Zeitraum wie gemessen
+        bis = datetime.fromtimestamp(lz.tagesverlauf.punkte[-1][0] + 60, lz.erfassung.tz)
+        aus["prognose_bis_jetzt_kwh"] = round(p._summe(max(von, mitternacht), bis) / 1000, 2) if p.werte else None
     return aus
 
 

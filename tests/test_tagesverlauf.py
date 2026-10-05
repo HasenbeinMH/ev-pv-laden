@@ -35,6 +35,13 @@ def test_vor_dem_ersten_wert_nichts():
     assert [t for t, _ in p] == [T0 + 120]
 
 
+def test_stunden_wh():
+    v = Tagesverlauf()
+    h0 = 1_000_000 * 3600
+    v.vorfuellen([(h0 + 60 * i, {"pv": 600}) for i in range(60)] + [(h0 + 3600, {"pv": 1200}), (h0 + 3660, {"pv": None})])
+    assert v.stunden_wh(h0) == [(h0, 600.0, 60), (h0 + 3600, 20.0, 1)]   # 1200 W eine Minute = 20 Wh
+
+
 def test_vorfuellen_nur_vor_live_daten():
     v = Tagesverlauf()
     v.hinzufuegen(T0 + 120, {"pv": 100})
