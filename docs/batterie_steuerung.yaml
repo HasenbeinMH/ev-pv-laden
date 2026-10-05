@@ -1,0 +1,261 @@
+# Batteriesteuerung SolarEdge + BYD LVS über Home Assistant
+# ANGELEGT 05.10.2026: C, D, E, F (automation.batterie_c_… bis _f_…). A und B noch nicht (go-e offline).
+#
+# GETESTET am Wechselrichter 05.10.2026, 12:56–12:59 (PV 2,8 kW, Verbraucher ~11 kW):
+#   Variante 1 „Charge from excess PV power only“: Werte bleiben stehen, Entladesperre wirkt –
+#     ABER der Akku lädt keinen normalen Überschuss (nur Leistung, die sonst abgeregelt würde);
+#     815 W gingen ins Netz statt in den Akku. → NICHT verwenden.
+#   Variante 2 Remote Command „Maximize self consumption“ + Remote Discharge Limit 0 W:
+#     Verbraucher an → Akku 0 W, Rest aus dem Netz; Verbraucher aus → Akku lädt 700 W aus dem
+#     Überschuss, Netz ≈ 0. → VERWENDET.
+#   Default Mode „Maximize self consumption“ hält sich, wenn er im Modus Remote Control
+#     geschrieben wird (im Modus Maximize Self Consumption wurde er verworfen). Steht jetzt so.
+#
+# Verwendet nur Entities, die in dieser HA-Installation vorhanden sind (geprüft 04.10.2026):
+#   Integration solaredge_modbus (HACS, binsentsu), Gerät „solaredge“:
+#     select.solaredge_storage_control_mode        Optionen: Disabled | Maximize Self Consumption |
+#                                                  Time of Use | Backup Only | Remote Control
+#     select.solaredge_storage_remote_command_mode Optionen: Off | Charge from excess PV power only |
+#                                                  Charge from PV first | Charge from PV and AC |
+#                                                  Maximize export | Discharge to match load |
+#                                                  Maximize self consumption
+#     select.solaredge_storage_default_mode        (gleiche Optionen; gilt nach Ablauf des Timeouts)
+#     number.solaredge_storage_remote_discharge_limit  0–20000 W, Normalwert 5000 W
+#     number.solaredge_storage_remote_command_timeout  0–86400 s, steht auf 3600
+#     sensor.se_modbus_daten_battery1_state_of_charge  SoC in %
+#   go-e (goecharger_api2):
+#     sensor.goe_325656_car                        Fahrzeugstatus als Code – direkt aus der Wallbox:
+#                                                  1 Idle, 2 Charging, 3 WaitCar, 4 Complete, 5 Error
+#                                                  (laut marq24-Quellcode). Ab Werk DEAKTIVIERT –
+#                                                  muss einmal aktiviert werden. Annahme bei der
+#                                                  Inbetriebnahme prüfen: Zustand beim Laden = "2".
+#
+# EINMALIG – ERLEDIGT 05.10.2026 (Wunsch: bei Ausfall von HA zurück in den Normalbetrieb):
+#   select.solaredge_storage_default_mode = "Maximize self consumption"
+#   Läuft der Remote-Befehl ab (HA aus > 1 h), arbeitet der Speicher dann wie gewohnt weiter –
+#   ANNAHME: im Default Mode gilt die Remote-Entladegrenze nicht (bei Gelegenheit prüfen).
+#
+# Helfer – ANGELEGT 04.10.2026:
+#   input_boolean.batterie_sperre_auto     „Batteriesperre: Auto lädt“
+#   input_boolean.batterie_sperre_winter   „Batteriesperre: Winterreserve“
+#   input_boolean.batterie_wintermodus     „Wintermodus Batteriereserve“  ← der manuelle Schalter
+#
+# Aufbau wie in der SPS: A–D setzen nur Anforderungs-Merker, E stellt den Wintermodus,
+# F ist der einzige Baustein, der auf den Wechselrichter schreibt (ODER der Anforderungen).
+# Dadurch können sich A/B und C/D nicht gegenseitig aufheben: Endet die Ladung, bleibt die
+# Winterreserve trotzdem aktiv, und umgekehrt.
+#
+# Sperren   = 1. Remote Discharge Limit 0 W  2. Storage Control Mode „Remote Control“
+#             3. Remote Command Mode „Maximize self consumption“
+#             Akku lädt weiter mit PV-Überschuss, entlädt nicht, lädt nicht aus dem Netz.
+#             Reihenfolge: Grenze zuerst, damit beim Umschalten nie kurz entladen wird.
+# Freigeben = 1. Storage Control Mode „Maximize Self Consumption“  2. Discharge Limit 5000 W
+
+# ── A – Wallbox meldet „lädt“ → Anforderung „Sperre Auto“ ──────────────────────────────────
+- alias: "Batterie A: Auto lädt – Entladung sperren"
+  description: "Setzt die Anforderung, sobald die Wallbox 30 s lang 'Charging' (Code 2) meldet"
+  mode: single
+  triggers:
+    - trigger: state
+      entity_id: sensor.goe_325656_car
+      to: "2"
+      for: "00:00:30"
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: state
+      entity_id: sensor.goe_325656_car
+      state: "2"
+  actions:
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.batterie_sperre_auto
+
+# ── B – Wallbox meldet nicht mehr „lädt“ → Anforderung zurücknehmen ─────────────────────────
+# Kurze Pausen (Wolke, Phasenumschaltung): erst nach 3 min ohne „lädt“. Wallbox nicht
+# erreichbar: nach 10 min freigeben – sonst bliebe die Sperre bei einem Ausfall der go-e stehen.
+- alias: "Batterie B: Auto lädt nicht mehr – Sperre Auto aufheben"
+  description: "Nimmt die Anforderung zurück; die Winterreserve bleibt davon unberührt"
+  mode: single
+  triggers:
+    - trigger: state
+      entity_id: sensor.goe_325656_car
+      from: "2"
+      for: "00:03:00"
+    - trigger: state
+      entity_id: sensor.goe_325656_car
+      to: "unavailable"
+      for: "00:10:00"
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: not
+      conditions:
+        - condition: state
+          entity_id: sensor.goe_325656_car
+          state: "2"
+  actions:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.batterie_sperre_auto
+
+# ── C – Winterreserve: SoC ≤ 25 % → Anforderung „Sperre Winter“ ─────────────────────────────
+- alias: "Batterie C: Winterreserve 25 % – Entladung sperren"
+  description: "Nur bei eingeschaltetem Wintermodus; Hysterese mit D (Freigabe erst ab 30 %)"
+  mode: single
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.se_modbus_daten_battery1_state_of_charge
+      below: 25.1          # SoC ≤ 25 %
+    - trigger: state
+      entity_id: input_boolean.batterie_wintermodus
+      to: "on"
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: state
+      entity_id: input_boolean.batterie_wintermodus
+      state: "on"
+    - condition: numeric_state
+      entity_id: sensor.se_modbus_daten_battery1_state_of_charge
+      below: 25.1
+  actions:
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.batterie_sperre_winter
+
+# ── D – Winterreserve: SoC ≥ 30 % oder Wintermodus aus → Anforderung zurücknehmen ──────────
+# Zwischen 25 und 30 % passiert nichts: der Merker behält seinen Zustand (auch über einen
+# Neustart, input_boolean wird wiederhergestellt) – das ist die gewünschte Hysterese.
+- alias: "Batterie D: Winterreserve 30 % – Entladung freigeben"
+  description: "Hebt die Winter-Anforderung ab 30 % SoC auf oder wenn der Wintermodus aus ist"
+  mode: single
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.se_modbus_daten_battery1_state_of_charge
+      above: 29.9          # SoC ≥ 30 %
+      for: "00:01:00"
+    - trigger: state
+      entity_id: input_boolean.batterie_wintermodus
+      to: "off"
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: or
+      conditions:
+        - condition: state
+          entity_id: input_boolean.batterie_wintermodus
+          state: "off"
+        - condition: numeric_state
+          entity_id: sensor.se_modbus_daten_battery1_state_of_charge
+          above: 29.9
+  actions:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.batterie_sperre_winter
+
+# ── E – Winterzeitraum: 1. Dezember an, 16. März aus ───────────────────────────────────────
+# Schaltet nur an den beiden Stichtagen. Dazwischen bleibt eine Hand-Einstellung des
+# Schalters bestehen, bis zum nächsten Stichtag (kein Überschreiben bei jedem Neustart).
+- alias: "Batterie E: Winterzeitraum"
+  description: "1.12. Wintermodus an, 16.3. Wintermodus aus"
+  mode: single
+  triggers:
+    - trigger: time
+      at: "00:01:00"
+  actions:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ now().month == 12 and now().day == 1 }}"
+          sequence:
+            - action: input_boolean.turn_on
+              target:
+                entity_id: input_boolean.batterie_wintermodus
+        - conditions:
+            - condition: template
+              value_template: "{{ now().month == 3 and now().day == 16 }}"
+          sequence:
+            - action: input_boolean.turn_off
+              target:
+                entity_id: input_boolean.batterie_wintermodus
+
+# ── F – Stellglied: einziger Baustein, der auf den Wechselrichter schreibt ─────────────────
+# Sperre, wenn mindestens eine Anforderung steht (ODER). Alle 30 min wird der Remote-Befehl
+# erneuert, damit er vor Ablauf des Timeouts (3600 s) nicht in den Default Mode fällt –
+# ANNAHME: Schreiben des Remote Command Mode startet den Timeout neu (bei Inbetriebnahme prüfen).
+# Geschrieben wird nur bei Abweichung bzw. zur Erneuerung – nicht bei jedem Lauf.
+- alias: "Batterie F: Stellglied Entladesperre"
+  description: "Setzt Storage Control Mode / Remote Command Mode nach den Anforderungen A–D"
+  mode: queued
+  max: 3
+  triggers:
+    - trigger: state
+      entity_id:
+        - input_boolean.batterie_sperre_auto
+        - input_boolean.batterie_sperre_winter
+      not_from: ["unavailable", "unknown"]
+    - trigger: homeassistant
+      event: start
+    - trigger: time_pattern
+      minutes: "/30"
+  actions:
+    - delay: "00:00:05"      # nach einem Neustart: Modbus-Integration erst verbinden lassen
+    - choose:
+        # Sperren
+        - conditions:
+            - condition: or
+              conditions:
+                - condition: state
+                  entity_id: input_boolean.batterie_sperre_auto
+                  state: "on"
+                - condition: state
+                  entity_id: input_boolean.batterie_sperre_winter
+                  state: "on"
+          sequence:
+            - if:
+                - condition: not
+                  conditions:
+                    - condition: numeric_state
+                      entity_id: number.solaredge_storage_remote_discharge_limit
+                      below: 1
+              then:
+                - action: number.set_value
+                  target:
+                    entity_id: number.solaredge_storage_remote_discharge_limit
+                  data:
+                    value: 0
+            - if:
+                - condition: not
+                  conditions:
+                    - condition: state
+                      entity_id: select.solaredge_storage_control_mode
+                      state: "Remote Control"
+              then:
+                - action: select.select_option
+                  target:
+                    entity_id: select.solaredge_storage_control_mode
+                  data:
+                    option: "Remote Control"
+            # Erneuert zugleich den Remote-Befehl (Timeout 3600 s) – deshalb ohne Bedingung
+            - action: select.select_option
+              target:
+                entity_id: select.solaredge_storage_remote_command_mode
+              data:
+                option: "Maximize self consumption"
+        # Freigeben – nur die eigene Sperre (Remote Control); andere Betriebsarten bleiben
+        - conditions:
+            - condition: state
+              entity_id: select.solaredge_storage_control_mode
+              state: "Remote Control"
+          sequence:
+            - action: select.select_option
+              target:
+                entity_id: select.solaredge_storage_control_mode
+              data:
+                option: "Maximize Self Consumption"
+            - action: number.set_value
+              target:
+                entity_id: number.solaredge_storage_remote_discharge_limit
+              data:
+                value: 5000
