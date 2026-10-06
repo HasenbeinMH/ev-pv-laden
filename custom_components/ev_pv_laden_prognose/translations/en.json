@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EV PV-Laden Prognose",
+        "description": "Address of the EV PV-Laden add-on inside Home Assistant (shown as hostname of the add-on, port 8099).",
+        "data": {
+          "url": "Add-on address"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "The add-on is not reachable at this address or does not provide a forecast yet."
+    },
+    "abort": {
+      "already_configured": "This add-on address is already configured."
+    }
+  }
+}

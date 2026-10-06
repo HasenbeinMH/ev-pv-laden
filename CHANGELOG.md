@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.12.0] - 2026-10-06
+
+PV-Prognose im Energie-Dashboard.
+
+- **Neue HA-Integration „EV PV-Laden Prognose“** (im selben Repository, über HACS installierbar): Sie holt die Stundenprognose des eigenen Modells alle 15 min vom Add-on und
+  - stellt sie dem **Energie-Dashboard** als „Prognose der Solarproduktion“ bereit,
+  - liefert Sensoren: heute, Rest heute, morgen, aktuelle Stunde, nächste Stunde, nächste 3 Stunden (kWh); die Stundenwerte stehen als Attribut `wh_hours` am Sensor „Heute“ (z. B. für ApexCharts oder Automationen)
+- Add-on: neue Schnittstelle `/api/prognose/stunden` für die Integration
+- Ist die Integration im Energie-Dashboard zugeordnet, rechnet das Add-on die eigene Prognose aus der HA-Prognose heraus – der Vergleich läuft nicht im Kreis
+
 ## [0.11.2] - 2026-10-06
 
 - Reiter Prognose → PV-Anlage: Tabelle der Dachflächen mit Neigung, Ausrichtung (Azimut mit Himmelsrichtung) und Leistung, dazu die Summe – aus den Add-on-Optionen `pv_flaechen`

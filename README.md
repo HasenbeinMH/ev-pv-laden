@@ -88,6 +88,21 @@ Vorlagen für HA-Automationen:
 - [docs/batterie_steuerung.yaml](docs/batterie_steuerung.yaml) – SolarEdge-Hausakku: keine
   Entladung beim Autoladen, Winterreserve 25/30 % (am Wechselrichter getestet)
 
+## PV-Prognose im Energie-Dashboard (Integration)
+
+Im Repository steckt zusätzlich eine kleine HA-Integration **„EV PV-Laden Prognose“**
+(`custom_components/ev_pv_laden_prognose`). Sie holt die Stundenprognose vom Add-on und
+stellt sie dem Energie-Dashboard bereit, dazu Sensoren (heute, Rest heute, morgen, aktuelle
+Stunde, nächste Stunde, nächste 3 Stunden; Stundenwerte als Attribut `wh_hours`).
+
+1. HACS → ⋮ → Benutzerdefinierte Repositories → `https://github.com/HasenbeinMH/ev-pv-laden`,
+   Typ **Integration** → „EV PV-Laden Prognose“ herunterladen → HA neu starten.
+2. Einstellungen → Geräte & Dienste → Integration hinzufügen → „EV PV-Laden Prognose“.
+   Vorgeschlagen ist die interne Adresse des Add-ons (`http://<Hostname des Add-ons>:8099`,
+   der Hostname steht in den Add-on-Infos).
+3. Einstellungen → Dashboards → Energie → Solarmodule → bearbeiten →
+   „Prognose der Solarproduktion“ → „EV PV-Laden Prognose“ auswählen.
+
 ## Dokumentation
 
 | Datei | Inhalt |

@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EV PV-Laden Prognose",
+        "description": "Adresse des Add-ons EV PV-Laden innerhalb von Home Assistant (Hostname des Add-ons, Port 8099). Der Vorschlag passt, wenn das Add-on aus dem Repository HasenbeinMH/ev-pv-laden installiert ist.",
+        "data": {
+          "url": "Adresse des Add-ons"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Das Add-on ist unter dieser Adresse nicht erreichbar oder liefert noch keine Prognose."
+    },
+    "abort": {
+      "already_configured": "Diese Add-on-Adresse ist schon eingerichtet."
+    }
+  }
+}

@@ -5,7 +5,7 @@
 # Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
 # Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
 name: EV PV-Laden
-version: "0.11.2"
+version: "0.12.0"
 slug: ev_pv_laden
 description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
 url: "https://github.com/HasenbeinMH/ev-pv-laden"

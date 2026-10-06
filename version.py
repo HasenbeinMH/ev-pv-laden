@@ -8,9 +8,19 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.11.2"
+VERSION = "0.12.0"
 
 CHANGELOG = [
+    {
+        "version": "0.12.0",
+        "datum": "2026-10-06",
+        "titel": "PV-Prognose im Energie-Dashboard",
+        "aenderungen": [
+            "Neue HA-Integration 'EV PV-Laden Prognose' (HACS, Ordner custom_components): bringt die Prognose des eigenen Modells ins Energie-Dashboard und liefert Sensoren heute, Rest heute, morgen, aktuelle Stunde, naechste Stunde, naechste 3 Stunden (Stundenwerte als Attribut)",
+            "Add-on: Schnittstelle /api/prognose/stunden fuer die Integration",
+            "Die eigene Prognose wird aus der HA-Prognose herausgerechnet (kein Kreislauf beim Vergleich)",
+        ],
+    },
     {
         "version": "0.11.2",
         "datum": "2026-10-06",

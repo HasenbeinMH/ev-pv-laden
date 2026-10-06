@@ -190,6 +190,17 @@ def api_prognose(request: Request):
     return aus
 
 
+@app.get("/api/prognose/stunden")
+def api_prognose_stunden(request: Request):
+    """Stundenprognose des eigenen Modells fuer die HA-Integration „EV PV-Laden Prognose“
+    (Energie-Dashboard). Format wie energy/solar_forecast: Zeitstempel = Ende der Stunde, Wh."""
+    lz = request.app.state.lz
+    p = lz.prognose_eigen
+    return {"verfuegbar": bool(p.werte), "quelle": "eigenes Modell",
+            "stand": p.stand.isoformat(timespec="seconds") if p.stand else None,
+            "wh_hours": {t.isoformat(): round(wh) for t, wh in p.werte.items()}}
+
+
 @app.get("/api/pvmodell")
 def api_pvmodell(request: Request):
     lz = request.app.state.lz

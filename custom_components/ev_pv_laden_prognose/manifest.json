@@ -1,0 +1,12 @@
+{
+  "domain": "ev_pv_laden_prognose",
+  "name": "EV PV-Laden Prognose",
+  "codeowners": ["@HasenbeinMH"],
+  "config_flow": true,
+  "documentation": "https://github.com/HasenbeinMH/ev-pv-laden",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/HasenbeinMH/ev-pv-laden/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

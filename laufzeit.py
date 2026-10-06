@@ -35,6 +35,8 @@ from version import VERSION
 log = logging.getLogger("app")
 
 ZYKLUS_S = 1.0
+# Domain der HA-Integration, die unsere Prognose ins Energie-Dashboard bringt
+PROGNOSE_DOMAIN = "ev_pv_laden_prognose"
 TROCKEN_SCHLUESSEL = "trockenlauf_bedienung"
 # Treiberwechsel nur, wenn nicht geladen wird (sonst Sprung in der Ladeleistung)
 WECHSEL_UNTER_W = 100.0
@@ -329,6 +331,7 @@ class Laufzeit:
             if self.ha and self.ha.verbunden:
                 try:
                     antwort = await self.ha.anfrage({"type": "energy/solar_forecast"})
+                    antwort = await self._ohne_eigene_prognose(antwort or {})
                     self.prognose_ha.setzen(antwort or {}, datetime.now(self.erfassung.tz))
                     if self.prognose_ha.fehler:
                         log.info("PV-Prognose (HA): %s", self.prognose_ha.fehler)
@@ -338,6 +341,18 @@ class Laufzeit:
                     self.prognose_ha.fehler = f"Abfrage fehlgeschlagen: {e}"
                     log.warning("PV-Prognose: %s", e)
             await asyncio.sleep(30)
+
+    async def _ohne_eigene_prognose(self, antwort: dict) -> dict:
+        """Die HA-Prognose dient als Vergleich/Ersatz. Ist im Energie-Dashboard die Integration
+        „EV PV-Laden Prognose“ zugeordnet, steckt darin unser eigenes Modell – herausrechnen,
+        sonst liefe die Prognose im Kreis."""
+        try:
+            eigene = await self.ha.anfrage({"type": "config_entries/get", "domain": PROGNOSE_DOMAIN})
+            ids = {e.get("entry_id") for e in (eigene or [])}
+        except Exception as e:
+            log.debug("Config-Entries nicht lesbar: %s", e)
+            ids = set()
+        return {k: v for k, v in antwort.items() if k not in ids}
 
     def _pv_mqtt(self) -> dict:
         p, _ = self.prognose()
