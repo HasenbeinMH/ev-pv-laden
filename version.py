@@ -8,9 +8,15 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.11.1"
+VERSION = "0.11.2"
 
 CHANGELOG = [
+    {
+        "version": "0.11.2",
+        "datum": "2026-10-06",
+        "titel": "Dachflaechen im Reiter Prognose",
+        "aenderungen": ["Reiter Prognose, PV-Anlage: Tabelle der Dachflaechen mit Neigung, Ausrichtung und Leistung"],
+    },
     {
         "version": "0.11.1",
         "datum": "2026-10-05",

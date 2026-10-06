@@ -635,6 +635,15 @@ async function pvLaden() {
   $("pv-modell-kennzahlen").textContent = p.trainiert_am
     ? `${new Date(p.trainiert_am).toLocaleDateString("de-DE")} · ${k.tage || "?"} Tage · ${k.felder || "?"} Felder` + (p.fehler ? " · " + p.fehler : "")
     : (p.fehler || "");
+  // Dachflaechen aus den Add-on-Optionen (pv_flaechen)
+  const richtung = a => ["N", "NO", "O", "SO", "S", "SW", "W", "NW"][Math.round(((a % 360) + 360) % 360 / 45) % 8];
+  const fl = p.flaechen || [];
+  const summe = fl.reduce((s, f) => s + f.kwp, 0);
+  $("pv-flaechen").innerHTML = fl.map(f => `<tr><td>${esc(f.name)}</td><td class="zahl">${zahl(f.neigung)}°</td>
+      <td class="zahl">${zahl(f.azimut)}° <span class="klein">${richtung(f.azimut)}</span></td>
+      <td class="zahl">${zahl(f.kwp, 2)} kWp</td></tr>`).join("")
+    + (fl.length ? `<tr><td><b>Gesamt</b></td><td></td><td class="klein zahl">0° Nord · 90° Ost · 180° Süd · 270° West</td>
+      <td class="zahl"><b>${zahl(summe, 2)} kWp</b></td></tr>` : '<tr><td colspan="4" class="klein">keine Dachflächen konfiguriert (Option pv_flaechen)</td></tr>');
   $("pv-hinweis").textContent = p.reinigung_empfohlen
     ? "Die Anlage ist deutlich schmutziger als üblich – eine Reinigung lohnt sich."
     : "Sauberkeit: 100 % = so sauber wie die saubersten Wochen der Historie. Nach einer Reinigung den Knopf drücken.";

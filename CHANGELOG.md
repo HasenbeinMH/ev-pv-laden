@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.11.2] - 2026-10-06
+
+- Reiter Prognose → PV-Anlage: Tabelle der Dachflächen mit Neigung, Ausrichtung (Azimut mit Himmelsrichtung) und Leistung, dazu die Summe – aus den Add-on-Optionen `pv_flaechen`
+
 ## [0.11.1] - 2026-10-05
 
 - **Schalter „Nachtladen“** direkt im Dashboard unter den Lademodi und in HA (`switch.ev_pv_laden_nachtladen`): *an* = ohne PV voll aus dem Netz, *aus* = Pause bis wieder PV da ist (Standard)
