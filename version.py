@@ -8,9 +8,17 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.13.1"
+VERSION = "0.13.2"
 
 CHANGELOG = [
+    {
+        "version": "0.13.2",
+        "datum": "2026-10-06",
+        "titel": "Laden bis",
+        "aenderungen": [
+            "Einstellung im Modus Zielzeit heisst Laden bis; Autokarte spricht vom Ladestand",
+        ],
+    },
     {
         "version": "0.13.1",
         "datum": "2026-10-06",

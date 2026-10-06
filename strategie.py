@@ -90,7 +90,7 @@ class Parameter:
             if not 0 <= getattr(self, name) <= 7200:
                 f.append(f"{name} muss zwischen 0 und 7200 s liegen")
         if not 10 <= self.ziel_soc <= 100:
-            f.append("Ladestand muss zwischen 10 und 100 % liegen")
+            f.append("„Laden bis“ muss zwischen 10 und 100 % liegen")
         if not UHRZEIT.match(str(self.abfahrt)):
             f.append(f"Abfahrt '{self.abfahrt}' ungültig (HH:MM)")
         if not 0 <= self.puffer_min <= 600:

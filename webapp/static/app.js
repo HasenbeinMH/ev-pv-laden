@@ -225,7 +225,7 @@ const MODUS_PARAMETER = {
   nur_pv: [["start_w", "Start ab", "W", 100], ["stopp_w", "Stopp unter", "W", 100],
            ["akku_soc_schwelle", "Hausakku zuerst bis", "%", 5]],
   min_pv: [["akku_soc_schwelle", "Hausakku zuerst bis", "%", 5]],
-  zielzeit: [["ziel_soc", "Ladestand", "%", 5], ["abfahrt", "Abfahrt", "Uhr"], ["puffer_min", "Puffer", "min", 5]],
+  zielzeit: [["ziel_soc", "Laden bis", "%", 5], ["abfahrt", "Abfahrt", "Uhr"], ["puffer_min", "Puffer", "min", 5]],
 };
 let mdModus = null;
 function mdParameter(r) {
@@ -276,7 +276,7 @@ function autoKarte() {
   $("ac-steckt").textContent = w.auto_steckt === true ? "angesteckt" : w.auto_steckt === false ? "nicht angesteckt" : "";
   $("ac-leistung").textContent = watt(w.auto_w);
   const l = laufendeLadung;
-  $("ac-geladen").textContent = l ? `${zahl(l.eto, 1)} kWh geladen` : (soc === null || soc === undefined ? "Batterie-Auto unter „Details“ eintragen" : "");
+  $("ac-geladen").textContent = l ? `${zahl(l.eto, 1)} kWh geladen` : (soc === null || soc === undefined ? "Ladestand unter „Details“ eintragen" : "");
   const laedt = (w.auto_w || 0) > 100;
   $("ac-status").className = "auto-status " + (laedt ? "laedt" : a.freigabe ? "wartet" : "");
   const grund = (a.grund || "").split(" · ")[0];   // Zielzeit-Teil steht im Plan-Kasten
@@ -294,9 +294,9 @@ function autoKarte() {
     if (p.erreicht) zeilen.push("Ziel erreicht – weiter nur PV");
     else if (p.benoetigt_kwh !== null) zeilen.push(`noch ${zahl(p.benoetigt_kwh, 1)} kWh`
       + (p.sofort ? " · lädt mit Netz" : p.spaetester_start ? ` · Netz ab ${esc(uhr(p.spaetester_start))}` : ""));
-    else zeilen.push("Batterie-Auto fehlt – unter „Details“ eintragen");
+    else zeilen.push("Ladestand fehlt – unter „Details“ eintragen");
   }
-  if (z.soc_quelle) zeilen.push(`Batterie-Auto: ${esc(z.soc_quelle)} ${zahl(z.soc_gesetzt_wert)} % (${esc(uhr(z.soc_gesetzt))}), hochgerechnet`);
+  if (z.soc_quelle) zeilen.push(`Ladestand: ${esc(z.soc_quelle)} ${zahl(z.soc_gesetzt_wert)} % (${esc(uhr(z.soc_gesetzt))}), hochgerechnet`);
   $("ac-plan").innerHTML = zeilen.map(t => `<div>${t}</div>`).join("");
 }
 $("nachtladen").onclick = () => {

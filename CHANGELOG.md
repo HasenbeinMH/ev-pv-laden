@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.13.2] - 2026-10-06
+
+- Einstellung im Modus Zielzeit heißt jetzt **„Laden bis“** (auch HA-Entität, Entitäts-ID unverändert)
+- Autokarte: Hinweise sprechen vom **Ladestand** des Autos („Ladestand unter ‚Details‘ eintragen“)
+
 ## [0.13.1] - 2026-10-06
 
 - **„Ziel-SoC“ heißt jetzt „Ladestand“** – im Dashboard, im Reiter Laden, als Name der HA-Entität und in den Meldungen („Ladestand erreicht“). Die Entitäts-ID bleibt gleich, bestehende Automationen laufen weiter
