@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.13.5] - 2026-10-06
+
+- Entwicklung: Auswertung, wie Morgentau die Prognose der Morgenstunden beeinflusst (`dev/modell/tau.py`). Ergebnis: nur im Winterhalbjahr spürbar, Tagesprognose kaum betroffen – am Add-on selbst keine Änderung
+
 ## [0.13.4] - 2026-10-06
 
 - Reiter Prognose: Balken in **kWh je Stunde** statt W, Tooltip zeigt die Stunde (z. B. „13–14 Uhr“)
