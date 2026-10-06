@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.13.3] - 2026-10-06
+
+- Start/Stopp nur noch in der Lademodus-Karte, nicht mehr doppelt in der Autokarte
+
 ## [0.13.2] - 2026-10-06
 
 - Einstellung im Modus Zielzeit heißt jetzt **„Laden bis“** (auch HA-Entität, Entitäts-ID unverändert)

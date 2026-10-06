@@ -306,7 +306,7 @@ $("nachtladen").onclick = () => {
 // Start/Stopp: jede Ladung bewusst starten; waehrend der Ladung sind Modus und Einstellungen gesperrt
 function startKnoepfe(r) {
   const kein = r.modus === "aus";
-  for (const id of ["md-start", "ac-pause"]) {
+  for (const id of ["md-start"]) {
     const k = $(id);
     k.textContent = r.gestartet ? "■ Stopp" : "▶ Start";
     k.classList.toggle("stopp", r.gestartet);
@@ -325,7 +325,6 @@ async function startStopp() {
   regelung();
 }
 $("md-start").onclick = startStopp;
-$("ac-pause").onclick = startStopp;
 
 // Ladekurve der laufenden Ladung: Leistung, Strom je Phase und geladene Energie als Linien
 let kurveDiagramm = null;
