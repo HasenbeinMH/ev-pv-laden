@@ -129,10 +129,10 @@ class Regelung:
     def auto_soc_setzen(self, soc: float) -> list[str]:
         """Eingabe in der Oberflaeche: SoC jetzt; ab hier rechnet der Wallbox-Zaehler hoch."""
         if not 0 <= soc <= 100:
-            return ["SoC muss zwischen 0 und 100 % liegen"]
+            return ["Batterie-Auto muss zwischen 0 und 100 % liegen"]
         self.soc.setzen(soc, self.abbild.wert("goe_eto"), time.time())
         self._soc_sichern()
-        db.ereignis("info", "zielzeit", f"SoC des Autos eingetragen: {soc:.0f} %")
+        db.ereignis("info", "zielzeit", f"Batterie-Auto eingetragen: {soc:.0f} %")
         return []
 
     def _soc_sichern(self) -> None:

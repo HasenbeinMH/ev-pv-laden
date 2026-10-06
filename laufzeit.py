@@ -310,7 +310,7 @@ class Laufzeit:
         for art in self.fertig.zyklus(werte.get("auto_steckt"), werte.get("auto_w"),
                                       werte.get("auto_status"), bool(plan and plan.erreicht)):
             daten = self._ladung_zusammenfassung()
-            text = {"fertig": "Auto fertig geladen", "ziel_erreicht": "Ziel-SoC erreicht"}[art]
+            text = {"fertig": "Auto fertig geladen", "ziel_erreicht": "Ladestand erreicht"}[art]
             db.ereignis("info", "meldung", f"{text}: {daten}")
             if self.mqtt:
                 self.mqtt.ereignis_senden(art, daten)

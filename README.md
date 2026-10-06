@@ -18,7 +18,7 @@ gingen, und übergibt jede Ladung an den [EV Tracker](https://github.com/Hasenbe
 - **Lademodi:** *Nur PV · Min + PV · Sofort · Zielzeit*. Hausakku zuerst bis zu einer
   einstellbaren SoC-Schwelle, darüber geht sein Überschuss ins Auto; Glättung, Start-/Stopp-
   Hysterese, Mindestladedauer und -pause.
-- **Zielzeit / Ziel-SoC:** bis zum spätesten Start nur PV, danach Netzladen bis zum Ziel.
+- **Zielzeit / Ladestand:** bis zum spätesten Start nur PV, danach Netzladen bis zum Ziel.
   SoC des Autos per Eingabe oder Sensor, dazwischen über den Zähler der Wallbox hochgerechnet.
 - **Zwei Stellglieder:**
   - *ids* (Standard): die go-e regelt selbst im Eco-Modus, das Add-on schickt alle 2 s einen
@@ -78,12 +78,12 @@ Das Gerät „EV PV-Laden“ (MQTT) bringt u. a. mit:
 
 | Art | Entitäten |
 |---|---|
-| Bedienen | Laden gestartet (Start/Stopp), Lademodus, Nachtladen, Treiber, Trockenlauf, Hausakku-Schwelle, SoC Auto, Ziel-SoC, Abfahrt, Puffer |
+| Bedienen | Laden gestartet (Start/Stopp), Lademodus, Nachtladen, Treiber, Trockenlauf, Hausakku-Schwelle, Batterie-Auto, Ladestand, Abfahrt, Puffer |
 | Bilanz | `sensor.ev_pv_laden_kwh_pv`, `…_kwh_akku`, `…_kwh_netz` |
 | EV Tracker | `sensor.ev_pv_laden_tracker_kwh_pv`, `…_tracker_kwh_netz`, Übergabe-Status |
 | Regelung | erlaubte Ladeleistung, Grund, Regelzustand, aktiver Treiber, Lebenszeichen |
 | Prognose | PV-Prognose heute / Rest / morgen, Sauberkeit der Anlage |
-| Meldungen | `event.ev_pv_laden_ladung` (fertig geladen, Ziel-SoC erreicht) – z. B. für Telegram |
+| Meldungen | `event.ev_pv_laden_ladung` (fertig geladen, Ladestand erreicht) – z. B. für Telegram |
 
 Vorlagen für HA-Automationen:
 - [docs/automationen.yaml](docs/automationen.yaml) – Watchdog und Telegram „fertig geladen“

@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.13.1] - 2026-10-06
+
+- **„Ziel-SoC“ heißt jetzt „Ladestand“** – im Dashboard, im Reiter Laden, als Name der HA-Entität und in den Meldungen („Ladestand erreicht“). Die Entitäts-ID bleibt gleich, bestehende Automationen laufen weiter
+- **„SoC Auto“ heißt jetzt „Batterie-Auto“** (aktueller Stand des Autos), ebenfalls mit gleicher Entitäts-ID
+
 ## [0.13.0] - 2026-10-06
 
 Start/Stopp und neues Dashboard.

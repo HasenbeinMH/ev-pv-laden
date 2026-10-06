@@ -89,7 +89,7 @@ Start erst ab 3 × 6 A = 4,1 kW, Stopp unter 3,8 kW (gleiche Hysterese wie einge
 ## Schritt 5 – Bedienung, Watchdog, Meldungen (M8)
 
 1. Automationen aus `docs/automationen.yaml` anlegen.
-2. In HA Lademodus, Ziel-SoC, Abfahrt ändern → [ ] Oberfläche übernimmt, ungültige Eingabe
+2. In HA Lademodus, Ladestand, Abfahrt ändern → [ ] Oberfläche übernimmt, ungültige Eingabe
    (z. B. Abfahrt 25:00) wird abgelehnt und HA zeigt wieder den alten Wert.
 3. **Watchdog** (Treiber A, Auto lädt): Add-on stoppen →
    [ ] nach ≤ 3 min `frc=1`, Ladung endet, [ ] Telegram kommt.

@@ -115,12 +115,12 @@ class Zielzeit:
         abfahrt = naechste_abfahrt(jetzt, uhrzeit)
         if soc is None:
             self.sofort = False
-            return Plan("nur_pv", "Zielzeit: SoC des Autos fehlt – bitte eintragen; bis dahin nur PV",
+            return Plan("nur_pv", "Zielzeit: Batterie-Auto fehlt – bitte eintragen; bis dahin nur PV",
                         abfahrt=abfahrt)
         benoetigt = max(ziel_soc - soc, 0.0) / 100.0 * kap_kwh / wirkungsgrad
         if soc >= ziel_soc:
             self.sofort = False
-            return Plan("nur_pv", f"Zielzeit: Ziel {ziel_soc:.0f} % erreicht (SoC {soc:.0f} %) – weiter nur PV",
+            return Plan("nur_pv", f"Zielzeit: Ziel {ziel_soc:.0f} % erreicht (Batterie-Auto {soc:.0f} %) – weiter nur PV",
                         soc, 0.0, abfahrt, None, erreicht=True)
         dauer = timedelta(hours=benoetigt / (p_max_w / 1000.0))
         start = abfahrt - dauer - timedelta(minutes=puffer_min)
@@ -128,8 +128,8 @@ class Zielzeit:
             self.sofort = True
         if self.sofort:
             return Plan("sofort", f"Zielzeit: Netzladen bis {ziel_soc:.0f} % – noch {_kwh(benoetigt)} kWh "
-                                  f"(SoC {soc:.0f} %, Abfahrt {abfahrt:%H:%M})",
+                                  f"(Batterie-Auto {soc:.0f} %, Abfahrt {abfahrt:%H:%M})",
                         soc, benoetigt, abfahrt, start, sofort=True)
         return Plan("nur_pv", f"Zielzeit: nur PV bis {start:%H:%M}, danach Netz – noch {_kwh(benoetigt)} kWh "
-                              f"bis {ziel_soc:.0f} % (SoC {soc:.0f} %)",
+                              f"bis {ziel_soc:.0f} % (Batterie-Auto {soc:.0f} %)",
                     soc, benoetigt, abfahrt, start)

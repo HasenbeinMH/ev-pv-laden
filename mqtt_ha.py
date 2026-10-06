@@ -190,9 +190,9 @@ def discovery_nutzlast() -> dict:
             "akku_soc_schwelle": _number("Hausakku zuerst bis SoC", "akku_soc_schwelle", 0, 100, 1, "%",
                                          "mdi:home-battery"),
             # Zielzeit: SoC des Autos (eingeben = neuer Stand; Anzeige = hochgerechnet), Ziel, Abfahrt
-            "auto_soc": _number("SoC Auto", "auto_soc", 0, 100, 1, "%", "mdi:car-battery",
+            "auto_soc": _number("Batterie-Auto", "auto_soc", 0, 100, 1, "%", "mdi:car-battery",
                                 device_class="battery"),
-            "ziel_soc": _number("Ziel-SoC", "ziel_soc", 10, 100, 5, "%", "mdi:battery-arrow-up"),
+            "ziel_soc": _number("Ladestand", "ziel_soc", 10, 100, 5, "%", "mdi:battery-arrow-up"),
             "abfahrt": {**_basis("text", "Abfahrt", "abfahrt", "mdi:clock-end"),
                         "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$", "min": 5, "max": 5,
                         "value_template": "{{ value_json.abfahrt }}"},

@@ -47,13 +47,13 @@
           Die Ladung wurde gesperrt (frc=1). Add-on prüfen – nach dem Neustart gibt es die
           Ladung selbst wieder frei.
 
-# ── 2. Auto fertig geladen / Ziel-SoC erreicht ─────────────────────────────────────────────
+# ── 2. Auto fertig geladen / Ladestand erreicht ─────────────────────────────────────────────
 # Das Add-on meldet einmal je Ansteckvorgang über event.ev_pv_laden_ladung:
 #   fertig         Fahrzeug meldet „Ladung beendet“, nachdem geladen wurde
-#   ziel_erreicht  Zielzeit: Ziel-SoC erreicht
+#   ziel_erreicht  Zielzeit: Ladestand erreicht
 # Attribute: kwh, kwh_pv (inkl. Hausakku), kwh_netz, pv_anteil, soc, ziel_soc, start
 - alias: "EV PV-Laden: Ladung fertig"
-  description: "Telegram, wenn das Auto fertig geladen hat oder der Ziel-SoC erreicht ist"
+  description: "Telegram, wenn das Auto fertig geladen hat oder der Ladestand erreicht ist"
   mode: queued
   triggers:
     - trigger: state
@@ -67,7 +67,7 @@
         a: "{{ trigger.to_state.attributes }}"
         kopf: >-
           {{ '🔋 Auto fertig geladen' if a.event_type == 'fertig'
-             else '🎯 Ziel-SoC ' ~ (a.ziel_soc | int) ~ ' % erreicht' }}
+             else '🎯 Ladestand ' ~ (a.ziel_soc | int) ~ ' % erreicht' }}
     - action: telegram_bot.send_message
       data:
         parse_mode: plain_text

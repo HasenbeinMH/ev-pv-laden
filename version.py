@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.13.0"
+VERSION = "0.13.1"
 
 CHANGELOG = [
+    {
+        "version": "0.13.1",
+        "datum": "2026-10-06",
+        "titel": "Ladestand und Batterie-Auto statt SoC",
+        "aenderungen": [
+            "Ziel-SoC heisst jetzt Ladestand (Dashboard, Reiter Laden, HA-Entitaet, Meldungen); Entitaets-ID bleibt number.ev_pv_laden_ziel_soc",
+            "SoC Auto heisst jetzt Batterie-Auto; Entitaets-ID bleibt number.ev_pv_laden_auto_soc",
+        ],
+    },
     {
         "version": "0.13.0",
         "datum": "2026-10-06",

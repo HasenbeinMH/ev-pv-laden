@@ -61,7 +61,7 @@
       <div class="block dash-auto">
         <div class="auto-kopf"><span class="klein">AUTO</span><span class="klein" id="ac-steckt"></span></div>
         <div class="auto-soc"><span id="ac-soc">–</span><small>%</small></div>
-        <div class="auto-balken"><span id="ac-fuell"></span><i id="ac-ziel" title="Ziel-SoC"></i></div>
+        <div class="auto-balken"><span id="ac-fuell"></span><i id="ac-ziel" title="Ladestand (Ziel)"></i></div>
         <div class="auto-zeile"><span class="auto-leistung" id="ac-leistung">–</span>
           <span class="klein" id="ac-geladen"></span></div>
         <div class="auto-status" id="ac-status"><span class="punkt"></span><span id="ac-status-text">–</span></div>
@@ -123,11 +123,11 @@
       <div class="block-kopf"><i data-icon="clock"></i><h2>Zielzeit</h2>
         <span class="unter" id="zz-status"></span></div>
       <div class="zz-gitter">
-        <div class="zz-wert"><div class="titel">SoC Auto</div><div class="wert" id="zz-soc">–</div>
+        <div class="zz-wert"><div class="titel">Batterie-Auto</div><div class="wert" id="zz-soc">–</div>
           <div class="unter" id="zz-soc-quelle"></div></div>
-        <label>SoC jetzt (%)<span class="zz-eingabe"><input type="number" min="0" max="100" step="1" id="zz-soc-neu">
+        <label>Batterie-Auto jetzt (%)<span class="zz-eingabe"><input type="number" min="0" max="100" step="1" id="zz-soc-neu">
           <button type="button" id="zz-soc-setzen">übernehmen</button></span></label>
-        <label>Ziel-SoC (%)<input type="number" min="10" max="100" step="5" id="zz-ziel"></label>
+        <label>Ladestand (%)<input type="number" min="10" max="100" step="5" id="zz-ziel"></label>
         <label>Abfahrt<input type="time" id="zz-abfahrt"></label>
         <label>Puffer (min)<input type="number" min="0" max="600" step="5" id="zz-puffer"></label>
         <div class="zz-aktion"><button type="button" class="primaer" id="zz-speichern">Speichern</button>

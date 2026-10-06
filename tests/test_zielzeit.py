@@ -96,7 +96,7 @@ def test_abstecken_beendet_sofort():
 
 def test_ohne_soc_nur_pv_mit_hinweis():
     p = Zielzeit().planen(um(6, 50), "07:00", 80, 30, None, KAP, WG, P_MAX, True)
-    assert p.modus == "nur_pv" and "SoC" in p.grund
+    assert p.modus == "nur_pv" and "Batterie-Auto" in p.grund
 
 
 def test_parameter_pruefen():
@@ -130,7 +130,7 @@ def test_regelung_zielzeit_schaltet_auf_sofort(reg):
     reg.parameter_setzen({"modus": ZIELZEIT, "abfahrt": "07:00", "ziel_soc": 80, "puffer_min": 30})
     reg.starten()
     reg.zyklus(0.0, um(5).timestamp())
-    assert reg.modus_wirksam == "nur_pv" and "SoC" in reg.aus.grund
+    assert reg.modus_wirksam == "nur_pv" and "Batterie-Auto" in reg.aus.grund
     reg.auto_soc_setzen(40)
     a = reg.zyklus(1.0, um(5).timestamp())
     assert reg.modus_wirksam == SOFORT and a.freigabe and a.p_erlaubt == reg.p_max
