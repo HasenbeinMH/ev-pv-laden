@@ -97,6 +97,24 @@ async def api_parameter(request: Request):
     return {"ok": True, "parameter": lz.regelung.param.als_dict()}
 
 
+@app.post("/api/laden")
+async def api_laden(request: Request):
+    """Start/Stopp: {"start": true|false}."""
+    lz = request.app.state.lz
+    if not lz.regelung:
+        return JSONResponse({"ok": False, "fehler": ["Regelung nicht aktiv"]}, status_code=409)
+    try:
+        start = (await request.json())["start"]
+        if not isinstance(start, bool):
+            raise ValueError
+    except Exception:
+        return JSONResponse({"ok": False, "fehler": ['{"start": true/false} erwartet']}, status_code=400)
+    fehler = lz.laden_setzen(start)
+    if fehler:
+        return JSONResponse({"ok": False, "fehler": fehler}, status_code=409)
+    return {"ok": True, "gestartet": lz.regelung.gestartet}
+
+
 @app.post("/api/trockenlauf")
 async def api_trockenlauf(request: Request):
     """Trockenlauf schalten (nur wenn die Add-on-Option ihn nicht fest sperrt)."""
@@ -124,6 +142,20 @@ def api_heute(request: Request):
     from datetime import datetime
     mitternacht = datetime.now(lz.erfassung.tz).replace(hour=0, minute=0, second=0, microsecond=0)
     return lz.tagesverlauf.liste(mitternacht.timestamp())
+
+
+@app.get("/api/ladekurve")
+def api_ladekurve(request: Request):
+    """Minutenmittel seit Beginn der laufenden Ladung (Autokarte im Dashboard)."""
+    lz = request.app.state.lz
+    offen = lz.erfassung.erkennung.offen if lz.erfassung else None
+    if offen is None:
+        return {"aktiv": False}
+    start = offen.start if offen.start.tzinfo else offen.start.replace(tzinfo=lz.erfassung.tz)
+    beginn = int(start.timestamp() // 60) * 60
+    daten = lz.tagesverlauf.liste(beginn)
+    en = lz.erfassung.stand().minus(offen.stand_start)
+    return {"aktiv": True, "start": start.isoformat(timespec="minutes"), "kwh": round(en.eto, 2), **daten}
 
 
 @app.post("/api/tracker/pruefen")

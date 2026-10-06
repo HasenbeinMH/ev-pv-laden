@@ -220,6 +220,48 @@ function kpiSetzen(pv, haus, akku, soc, auto, phasen, w) {
 }
 
 let laufendeLadung = null, letzteRegelung = null;
+// Einstellungen je Lademodus in der Dashboard-Karte: [Parameter, Text, Einheit, Schritt]
+const MODUS_PARAMETER = {
+  nur_pv: [["start_w", "Start ab", "W", 100], ["stopp_w", "Stopp unter", "W", 100],
+           ["akku_soc_schwelle", "Hausakku zuerst bis", "%", 5]],
+  min_pv: [["akku_soc_schwelle", "Hausakku zuerst bis", "%", 5]],
+  zielzeit: [["ziel_soc", "Ziel-SoC", "%", 5], ["abfahrt", "Abfahrt", "Uhr"], ["puffer_min", "Puffer", "min", 5]],
+};
+let mdModus = null;
+function mdParameter(r) {
+  const el = $("md-parameter"), felder = MODUS_PARAMETER[r.modus] || [];
+  if (mdModus !== r.modus) {        // Aufbau nur beim Moduswechsel – Eingaben bleiben beim Aktualisieren
+    mdModus = r.modus;
+    const hinweis = {aus: "Laden gesperrt",
+                     sofort: `volle Leistung, höchstens ${zahl(r.p_max / 1000, 1)} kW`}[r.modus];
+    el.innerHTML = (felder.length ? `<div class="md-titel">Einstellungen ${esc(r.modi[r.modus])}</div>` : "")
+      + felder.map(([k, t, e, s]) => `<label class="md-feld"><span>${esc(t)}</span><span class="md-eingabe">
+          <input name="${k}" ${e === "Uhr" ? 'type="time"' : `type="number" step="${s}"`}>
+          <span class="einheit">${e === "Uhr" ? "" : esc(e)}</span></span></label>`).join("")
+      + (hinweis ? `<div class="md-hinweis">${esc(hinweis)}</div>` : "")
+      + (felder.length ? '<div class="md-ok" id="md-ok"></div>' : "")
+      + (r.modus === "nur_pv" ? '<div class="md-hinweis" id="md-wirksam"></div>' : "");
+    el.querySelectorAll("input").forEach(i => {
+      i.onchange = async () => {
+        const wert = i.type === "time" ? i.value : Number(i.value);
+        const antwort = await (await fetch("api/parameter", {method: "POST",
+          headers: {"Content-Type": "application/json"}, body: JSON.stringify({[i.name]: wert})})).json();
+        const ok = $("md-ok");
+        if (ok) { ok.className = antwort.ok ? "md-ok" : "md-ok schlecht";
+                  ok.textContent = antwort.ok ? "✓ gespeichert" : antwort.fehler.join("; "); }
+        if (antwort.ok) setTimeout(() => { if ($("md-ok")) $("md-ok").textContent = ""; }, 3000);
+        regelung();
+      };
+    });
+  }
+  el.querySelectorAll("input").forEach(i => {
+    if (document.activeElement !== i) i.value = r.parameter[i.name];
+    i.disabled = r.gestartet || r.extern;
+  });
+  const w = $("md-wirksam");
+  if (w) w.textContent = r.start_wirksam !== r.parameter.start_w
+    ? `wirksam: Start ab ${zahl(r.start_wirksam)} W, Stopp unter ${zahl(r.stopp_wirksam)} W (Treiber A, dreiphasig)` : "";
+}
 const MODUS_TEXT = {aus: "Laden gesperrt", nur_pv: "nur Überschuss", min_pv: "6 A + Überschuss",
                     sofort: "volle Leistung", zielzeit: "bis zur Abfahrt"};
 function autoKarte() {
@@ -244,7 +286,7 @@ function autoKarte() {
   const phasen = ["auto_i1", "auto_i2", "auto_i3"].filter(n => (w[n] ?? 0) >= 1).length;
   $("ac-info").textContent = [r.modi[r.modus], phasen ? `${phasen}-phasig` : null,
                               strom >= 1 ? `${zahl(strom, 1)} A` : null, "Treiber " + r.treiber].filter(Boolean).join(" · ");
-  $("ac-pause").textContent = r.modus === "aus" ? "Laden fortsetzen" : "Laden pausieren";
+
   // Zielzeit-Plan bzw. Herkunft des SoC
   const p = z.plan, zeilen = [];
   if (r.modus === "zielzeit" && p) {
@@ -261,18 +303,76 @@ $("nachtladen").onclick = () => {
   if (!letzteRegelung) return;
   parameterSenden({ohne_pv: letzteRegelung.nachtladen ? "pause" : "voll"});
 };
-$("ac-pause").onclick = () => {
+// Start/Stopp: jede Ladung bewusst starten; waehrend der Ladung sind Modus und Einstellungen gesperrt
+function startKnoepfe(r) {
+  const kein = r.modus === "aus";
+  for (const id of ["md-start", "ac-pause"]) {
+    const k = $(id);
+    k.textContent = r.gestartet ? "■ Stopp" : "▶ Start";
+    k.classList.toggle("stopp", r.gestartet);
+    k.disabled = r.extern || (!r.gestartet && kein);
+  }
+  $("md-start-info").textContent = r.extern ? "Ladung über die go-e-App – bis zum Abstecken keine Eingriffe"
+    : r.gestartet ? `läuft: ${r.modi[r.modus]} · zum Ändern erst Stopp`
+    : kein ? "Lademodus wählen, dann Start" : "Einstellungen prüfen, dann Start";
+}
+async function startStopp() {
   const r = letzteRegelung;
   if (!r) return;
-  if (r.modus === "aus") {
-    let vorher = "nur_pv";
-    try { vorher = localStorage.getItem("evpv-modus-vorher") || vorher; } catch (e) {}
-    parameterSenden({modus: vorher});
-  } else {
-    try { localStorage.setItem("evpv-modus-vorher", r.modus); } catch (e) {}
-    parameterSenden({modus: "aus"});
-  }
-};
+  const antwort = await (await fetch("api/laden", {method: "POST", headers: {"Content-Type": "application/json"},
+                                                   body: JSON.stringify({start: !r.gestartet})})).json();
+  if (!antwort.ok) alert(antwort.fehler.join("\n"));
+  regelung();
+}
+$("md-start").onclick = startStopp;
+$("ac-pause").onclick = startStopp;
+
+// Ladekurve der laufenden Ladung: Leistung, Strom je Phase und geladene Energie als Linien
+let kurveDiagramm = null;
+async function ladekurveLaden() {
+  if (!window.echarts || (location.hash && location.hash !== "#live")) return;
+  let k;
+  try { k = await holen("api/ladekurve"); } catch (e) { return; }
+  const rahmen = $("ac-kurve-rahmen");
+  if (!k.aktiv || !k.daten || k.daten.length < 2) { rahmen.hidden = true; return; }
+  rahmen.hidden = false;
+  const st = new Date(k.start), heute = st.toDateString() === new Date().toDateString();
+  $("ac-kurve-titel").textContent = `Ladekurve seit ${heute ? "" : st.toLocaleDateString("de-DE", {day: "2-digit", month: "2-digit"}) + " "}`
+    + st.toLocaleTimeString("de-DE", {hour: "2-digit", minute: "2-digit"}) + ` · ${zahl(k.kwh, 1)} kWh`;
+  const i = Object.fromEntries(k.spalten.map((n, j) => [n, j]));
+  const leistung = [], strom = [], energie = [];
+  // Energie: Minutenmittel aufsummiert, so verschoben, dass der letzte Punkt dem Zaehler (k.kwh) entspricht
+  let summe = 0;
+  const kum = k.daten.map(d => (summe += (d[i.auto] ?? 0) / 60000));
+  const versatz = Math.max(k.kwh - summe, 0);
+  k.daten.forEach((d, j) => {
+    const t = d[i.zeit] * 1000;
+    leistung.push([t, d[i.auto] === null ? null : d[i.auto] / 1000]);
+    strom.push([t, d[i.strom] ?? null]);
+    energie.push([t, Math.round((versatz + kum[j]) * 100) / 100]);
+  });
+  kurveDiagramm = kurveDiagramm || echarts.init($("ac-kurve"));
+  diagramme[4] = kurveDiagramm;
+  const ax = achsen(), klein = {...ax.y.axisLabel, fontSize: 10};
+  const linie = (name, daten, farbe, achse, einheit, nk) => ({name, type: "line", yAxisIndex: achse, data: daten,
+    showSymbol: false, color: css(farbe), lineStyle: {width: 2}, connectNulls: false,
+    tooltip: {valueFormatter: x => x === null || x === undefined ? "–" : zahl(x, nk) + " " + einheit}});
+  kurveDiagramm.setOption({
+    animation: false, grid: {left: 40, right: 64, top: 22, bottom: 18},
+    legend: {top: 0, left: 0, itemWidth: 14, itemHeight: 2, textStyle: {color: css("--text-2"), fontSize: 10}},
+    tooltip: {...ax.tooltip, valueFormatter: undefined},
+    xAxis: {...ax.x, minInterval: 60000, axisLabel: {...ax.x.axisLabel, fontSize: 10}},
+    yAxis: [
+      {...ax.y, min: 0, splitNumber: 3, alignTicks: true, axisLabel: {...klein, formatter: x => zahl(x) + " kW"}},
+      {...ax.y, min: 0, alignTicks: true, splitLine: {show: false}, axisLabel: {...klein, formatter: x => zahl(x) + " A"}},
+      {...ax.y, min: 0, alignTicks: true, splitLine: {show: false}, offset: 32,
+       axisLabel: {...klein, formatter: x => zahl(x) + " kWh"}},
+    ],
+    series: [linie("Leistung", leistung, "--auto", 0, "kW", 1), linie("Strom", strom, "--solar", 1, "A", 1),
+             linie("Energie", energie, "--einspeisung", 2, "kWh", 1)],
+  }, true);
+  kurveDiagramm.resize();
+}
 
 let heuteDiagramm = null;
 async function heuteLaden() {
@@ -485,11 +585,14 @@ async function regelung() {
     const r = await holen("api/regelung");
     if (!r.modi) return;
     $("treiber").textContent = "Treiber: " + r.treiber;
-    $("modi").innerHTML = Object.entries(r.modi).map(([k, n]) =>
-      `<button type="button" data-modus="${k}" class="${k === r.modus ? "aktiv" : ""}">${esc(n)}</button>`).join("");
-    $("modi-dash").innerHTML = Object.entries(r.modi).map(([k, n]) =>
-      `<button type="button" data-modus="${k}" class="${k === r.modus ? "aktiv" : ""}">${esc(n)}
-        <span class="klein" style="display:block">${esc(MODUS_TEXT[k] || "")}</span></button>`).join("");
+    const gesperrt = r.gestartet || r.extern;
+    const modi = Object.entries(r.modi).filter(([k]) => k !== "aus");
+    $("modi").innerHTML = modi.map(([k, n]) =>
+      `<button type="button" data-modus="${k}" class="${k === r.modus ? "aktiv" : ""}"${gesperrt ? " disabled" : ""}>${esc(n)}</button>`).join("");
+    $("modi-dash").innerHTML = modi.map(([k, n]) =>
+      `<button type="button" data-modus="${k}" class="${k === r.modus ? "aktiv" : ""}" title="${esc(MODUS_TEXT[k] || "")}"${gesperrt ? " disabled" : ""}>${esc(n)}</button>`).join("");
+    startKnoepfe(r);
+    mdParameter(r);
     document.querySelectorAll("#modi button, #modi-dash button").forEach(b => {
       b.onclick = () => parameterSenden({modus: b.dataset.modus}); });
     letzteRegelung = r;
@@ -501,9 +604,9 @@ async function regelung() {
     const aktivA = r.treiber.startsWith("A");
     $("treiber-info").textContent = (aktivA !== (gewaehlt === "a") ? "Wechsel folgt, sobald nicht geladen wird · " : "")
       + `Start ab ${zahl(Math.round(r.start_wirksam))} W, Stopp unter ${zahl(Math.round(r.stopp_wirksam))} W`;
-    $("md-info").textContent = `Start ab ${zahl(r.start_wirksam / 1000, 1)} kW Überschuss, `
-      + `Stopp unter ${zahl(r.stopp_wirksam / 1000, 1)} kW · Hausakku zuerst bis ${zahl(r.parameter.akku_soc_schwelle)} %`;
     const nl = $("nachtladen"), wirkt = ["nur_pv", "min_pv"].includes(r.modus);
+    nl.hidden = !wirkt;
+    nl.disabled = gesperrt;
     nl.setAttribute("aria-checked", r.nachtladen ? "true" : "false");
     $("nachtladen-info").textContent = (r.nachtladen ? "ohne PV voll aus dem Netz" : "ohne PV Pause bis PV da ist")
       + (!wirkt ? " · gilt für Nur PV und Min + PV" : r.ohne_pv_aktiv ? " · jetzt aktiv" : "");
@@ -584,12 +687,22 @@ async function prognoseLaden() {
   $("prognose-quelle").textContent = prognose.quelle || "";
   $("prognose-quelle").className = "marke " + (prognose.quelle === "eigenes Modell" ? "trocken" : "");
   if (prognose.quelle) $("k-prognose-unter").textContent += " · " + prognose.quelle;
+  // Dashboard: Tagesprognose, darunter Rest und – wenn vorhanden – Vergleich mit der Messung
+  $("kp-prognose").innerHTML = prognose.verfuegbar ? `${zahl(prognose.heute_kwh, 1)}<small>kWh</small>` : "–";
+  let unter = prognose.verfuegbar ? `Rest ${zahl(prognose.heute_rest_kwh, 1)} · morgen ${zahl(prognose.morgen_kwh, 1)} kWh`
+    : (prognose.fehler || "keine Prognose");
+  if (prognose.gemessen_kwh !== undefined && prognose.prognose_bis_jetzt_kwh) {
+    const abw = (prognose.gemessen_kwh / prognose.prognose_bis_jetzt_kwh - 1) * 100;
+    unter = `bis jetzt ${zahl(prognose.gemessen_kwh, 1)} von ${zahl(prognose.prognose_bis_jetzt_kwh, 1)} kWh `
+      + `(${abw >= 0 ? "+" : ""}${zahl(abw)} %) · Rest ${zahl(prognose.heute_rest_kwh, 1)}`;
+  }
+  $("kp-prognose-unter").textContent = unter;
+  $("kp-prognose-unter").title = unter;
   if (prognose.gemessen_kwh !== undefined && prognose.prognose_bis_jetzt_kwh) {
     const abw = (prognose.gemessen_kwh / prognose.prognose_bis_jetzt_kwh - 1) * 100;
     $("prognose-unter").textContent += ` · bis jetzt gemessen ${kwh(prognose.gemessen_kwh)} gegenüber Prognose `
       + `${kwh(prognose.prognose_bis_jetzt_kwh)} (${abw >= 0 ? "+" : ""}${zahl(abw)} %)`;
   }
-  $("tb-prognose").textContent = prognose.verfuegbar ? kwh(prognose.heute_rest_kwh) : "–";
   prognoseZeichnen();
 }
 function prognoseZeichnen() {
@@ -767,7 +880,7 @@ async function ereignisse() {
 // ── Takt ────────────────────────────────────────────────────────────────────
 function laden() {
   const s = location.hash || "#live";
-  if (s === "#live") { regelung(); bilanz(); heuteLaden(); prognoseLaden(); }
+  if (s === "#live") { regelung(); bilanz(); heuteLaden(); prognoseLaden(); ladekurveLaden(); }
   if (s === "#laden" || s === "#einstellungen") { regelung(); bilanz(); prognoseLaden(); }
   if (s === "#bilanz") { verlauf(); bilanz(); }
   if (s === "#prognose") { prognoseLaden(); pvLaden(); }
@@ -782,6 +895,7 @@ setInterval(() => { if (auf("#live", "#laden")) regelung(); }, 2000);
 setInterval(() => { if (auf("#bilanz")) verlauf(); }, 5000);
 setInterval(() => { if (auf("#live", "#laden", "#bilanz")) bilanz(); }, 5000);
 setInterval(() => { if (auf("#live")) heuteLaden(); }, 60000);
+setInterval(() => { if (auf("#live")) ladekurveLaden(); }, 30000);
 setInterval(() => { if (auf("#diagnose")) ereignisse(); }, 10000);
 setInterval(prognoseLaden, 300000);
 setInterval(() => { if (auf("#prognose")) pvLaden(); }, 60000);

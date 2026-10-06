@@ -128,6 +128,7 @@ def test_regelung_zielzeit_schaltet_auf_sofort(reg):
     reg.tz = TZ
     assert reg.p_plan == P_MAX                       # min(22 kW, 16,56 kW)
     reg.parameter_setzen({"modus": ZIELZEIT, "abfahrt": "07:00", "ziel_soc": 80, "puffer_min": 30})
+    reg.starten()
     reg.zyklus(0.0, um(5).timestamp())
     assert reg.modus_wirksam == "nur_pv" and "SoC" in reg.aus.grund
     reg.auto_soc_setzen(40)

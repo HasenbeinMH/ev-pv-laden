@@ -8,9 +8,22 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.12.0"
+VERSION = "0.13.0"
 
 CHANGELOG = [
+    {
+        "version": "0.13.0",
+        "datum": "2026-10-06",
+        "titel": "Start/Stopp und neues Dashboard",
+        "aenderungen": [
+            "Start/Stopp: Modus und Einstellungen pruefen, dann Start; waehrend der Ladung gesperrt, zum Aendern erst Stopp; Abstecken stoppt; Zustand bleibt ueber einen Neustart",
+            "Gestoppt = Wallbox gesperrt (ersetzt den Modus Aus). Ladung ueber die go-e-App bei nicht verfuegbarem HA wird erkannt, das Add-on greift bis zum Abstecken nicht ein",
+            "HA: Schalter 'Laden gestartet'; Modus- und Einstellungsaenderungen werden waehrend der Ladung abgelehnt",
+            "Dashboard: Kennzahlen zweizeilig ueber dem Energiefluss mit neuer Kachel 'PV-Prognose heute'; Lademodus-Karte mit den Einstellungen des gewaehlten Modus (direkt bearbeitbar) und grossem Start/Stopp-Knopf",
+            "Autokarte: Ladekurve der laufenden Ladung mit Leistung, Ladestrom je Phase und geladener Energie",
+            "Passt ohne Scrollen auf Full HD und ab 1366 x 768",
+        ],
+    },
     {
         "version": "0.12.0",
         "datum": "2026-10-06",

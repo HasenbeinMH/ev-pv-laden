@@ -26,7 +26,7 @@ from pvprognose import PVPrognose
 from prozessabbild import Prozessabbild
 from regelung import Regelung
 from strategie import MIN_PV, NUR_PV
-from tagesverlauf import SIGNALE as TAG_SIGNALE, Tagesverlauf, aus_historie, hausverbrauch
+from tagesverlauf import SIGNALE as TAG_SIGNALE, Tagesverlauf, aus_historie, hausverbrauch, ladestrom
 from tracker import Uebergabe
 from treiber import Aktion, TreiberA, TreiberBasis, TreiberIds
 from wiederanlauf import FUP, TREIBER_A, Wiederanlauf
@@ -38,6 +38,10 @@ ZYKLUS_S = 1.0
 # Domain der HA-Integration, die unsere Prognose ins Energie-Dashboard bringt
 PROGNOSE_DOMAIN = "ev_pv_laden_prognose"
 TROCKEN_SCHLUESSEL = "trockenlauf_bedienung"
+# Ladung von aussen (go-e-App) wird nur kurz nach dem Start bzw. nach einer Wiederverbindung
+# mit HA erkannt – laeuft HA normal, gilt die Bedienung im Add-on (Sollwertueberwachung)
+EXTERN_FENSTER_S = 120.0
+EXTERN_LAEDT_W = 500.0
 # Treiberwechsel nur, wenn nicht geladen wird (sonst Sprung in der Ladeleistung)
 WECHSEL_UNTER_W = 100.0
 HALT_TIMEOUT_S = 5.0
@@ -64,6 +68,7 @@ class Laufzeit:
         self.fertig = FertigErkennung()
         self.tracker: Uebergabe | None = None
         self.tagesverlauf = Tagesverlauf()
+        self._verbunden_seit: float | None = None
         # Trockenlauf in zwei Stufen wie Hauptschalter + Betriebsartenwahl: die Add-on-Option
         # sperrt fest; nur wenn sie aus ist, schaltet die Bedienung (Oberflaeche/HA) –
         # gespeichert, Anfangswert "an"
@@ -157,15 +162,17 @@ class Laufzeit:
                     self.erfassung.senden_noetig = True
                 mono = time.monotonic()
                 werte = {n: self.abbild.wert(n, mono) for n in self.abbild.werte}
+                self._extern_pruefen(mono, werte)
                 aktionen = self._wiederanlauf(mono, a, werte)
                 if self._treiber_waehlen(werte):
                     self.erfassung.senden_noetig = True
-                self._ausfuehren(aktionen + self.treiber.zyklus(mono, self.regelung.modus_wirksam, a,
-                                                                self.regelung.pgrid_v, werte))
+                if not self.regelung.extern:      # Ladung von aussen: nicht eingreifen
+                    self._ausfuehren(aktionen + self.treiber.zyklus(mono, self.regelung.modus_wirksam, a,
+                                                                    self.regelung.pgrid_v, werte))
                 self._meldungen(werte)
                 self.tagesverlauf.hinzufuegen(time.time(), {
                     "pv": werte.get("pv_w"), "netz": werte.get("netz_w"), "akku": werte.get("akku_w"),
-                    "auto": werte.get("auto_w"),
+                    "auto": werte.get("auto_w"), "strom": ladestrom(werte),
                     "haus": hausverbrauch(werte, self.konfig.sensor_haus_enthaelt_auto)})
                 if self.erfassung.senden_noetig and self.mqtt:
                     self.mqtt.zustand_setzen(self.mqtt_zustand())
@@ -252,6 +259,27 @@ class Laufzeit:
         self.erfassung.senden_noetig = True
         return []
 
+    def _extern_pruefen(self, mono: float, werte: dict) -> None:
+        """Laedt die Wallbox kurz nach dem Start/der Wiederverbindung, ohne dass im Add-on
+        gestartet wurde, kam die Ladung von aussen (go-e-App, HA war nicht verfuegbar)."""
+        verbunden = self.ha.verbunden if self.ha else True
+        if not verbunden:
+            self._verbunden_seit = None
+            return
+        if self._verbunden_seit is None:
+            self._verbunden_seit = mono
+        r = self.regelung
+        auto_w = werte.get("auto_w")
+        if (not r.gestartet and not r.extern and auto_w is not None and auto_w > EXTERN_LAEDT_W
+                and mono - self._verbunden_seit < EXTERN_FENSTER_S):
+            r.extern_erkannt()
+            self.erfassung.senden_noetig = True
+
+    def laden_setzen(self, start: bool) -> list[str]:
+        fehler = self.regelung.starten() if start else self.regelung.stoppen()
+        self.erfassung.senden_noetig = True
+        return fehler
+
     async def _befehl(self, schluessel: str, text: str) -> None:
         """Befehl aus HA (MQTT): wie eine Eingabe in der Oberflaeche."""
         try:
@@ -261,6 +289,8 @@ class Laufzeit:
             return
         if ziel == "trockenlauf":
             fehler = await self.trockenlauf_setzen(wert)
+        elif ziel == "laden":
+            fehler = self.laden_setzen(wert)
         elif ziel == "auto_soc":
             fehler = self.regelung.auto_soc_setzen(wert)
         else:

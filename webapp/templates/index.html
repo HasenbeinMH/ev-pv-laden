@@ -40,6 +40,8 @@
   <section class="seite" id="seite-live">
     <div class="dash">
       <div class="dash-kpi">
+        <div class="kpi" style="--c:var(--warnung)"><div class="kpi-kopf"><i data-icon="chart-line"></i>PV-Prognose heute</div>
+          <div class="kpi-wert" id="kp-prognose">–</div><div class="kpi-unter" id="kp-prognose-unter"></div></div>
         <div class="kpi" style="--c:var(--solar)"><div class="kpi-kopf"><i data-icon="sun"></i>PV</div>
           <div class="kpi-wert" id="kp-pv">–</div><div class="kpi-unter" id="kp-pv-unter">Erzeugung jetzt</div></div>
         <div class="kpi" style="--c:var(--verbrauch)"><div class="kpi-kopf"><i data-icon="house"></i>Haus</div>
@@ -65,8 +67,12 @@
         <div class="auto-status" id="ac-status"><span class="punkt"></span><span id="ac-status-text">–</span></div>
         <div class="klein" id="ac-info"></div>
         <div class="auto-plan" id="ac-plan"></div>
+        <div class="ladekurve-rahmen" id="ac-kurve-rahmen" hidden>
+          <div class="klein" id="ac-kurve-titel"></div>
+          <div class="ladekurve" id="ac-kurve"></div>
+        </div>
         <div class="auto-knoepfe">
-          <button type="button" id="ac-pause">Laden pausieren</button>
+          <button type="button" id="ac-pause" class="start-knopf">▶ Start</button>
           <a class="knopf" href="#laden">Details</a>
         </div>
       </div>
@@ -74,11 +80,15 @@
       <div class="block dash-modus">
         <div class="block-kopf"><i data-icon="plug"></i><h2>Lademodus</h2></div>
         <div id="modi-dash" class="modus-liste"></div>
+        <div id="md-parameter" class="md-parameter"></div>
         <button type="button" id="nachtladen" class="nacht-schalter" role="switch" aria-checked="false">
           <span class="nacht-text"><b>Nachtladen</b><span class="klein" id="nachtladen-info">–</span></span>
           <span class="schalter-bahn"><span class="schalter-knopf"></span></span>
         </button>
-        <div class="klein" id="md-info"></div>
+        <div class="md-start-rahmen">
+          <div class="klein" id="md-start-info"></div>
+          <button type="button" id="md-start" class="start-knopf gross">▶ Start</button>
+        </div>
       </div>
 
       <div class="block dash-heute">
@@ -94,7 +104,6 @@
           <div class="tb-zeile"><span><i class="farbpunkt" style="background:var(--akku)"></i>aus Hausakku</span><b id="tb-akku">–</b></div>
           <div class="tb-zeile"><span><i class="farbpunkt" style="background:var(--netz)"></i>aus dem Netz</span><b id="tb-netz">–</b></div>
           <div class="tb-zeile tb-gross"><span>PV-Anteil</span><b id="tb-anteil">–</b></div>
-          <div class="tb-zeile klein"><span>PV-Prognose Rest</span><span id="tb-prognose">–</span></div>
         </div>
       </div>
     </div>

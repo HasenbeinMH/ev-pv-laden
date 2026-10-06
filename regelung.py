@@ -15,7 +15,7 @@ from datetime import datetime, timezone, tzinfo
 import datenbank as db
 from konfig import Konfig
 from prozessabbild import Prozessabbild
-from strategie import (MIN_PV, MODI, NUR_PV, OHNE_PV, SOFORT, SPANNUNG_V, TREIBER, WIEDERANLAUF, ZIELZEIT,
+from strategie import (AUS, MIN_PV, MODI, NUR_PV, OHNE_PV, SOFORT, SPANNUNG_V, TREIBER, WIEDERANLAUF, ZIELZEIT,
                        Ausgang, Eingang, Parameter, Strategie, pgrid_virtuell)
 from tageslicht import Tageslicht
 from zielzeit import Plan, SocSchaetzer, Zielzeit
@@ -25,6 +25,7 @@ log = logging.getLogger("regelung")
 VERLAUF_S = 3600
 PARAM_SCHLUESSEL = "strategie"
 SOC_SCHLUESSEL = "auto_soc"
+BETRIEB_SCHLUESSEL = "betrieb"
 
 
 class Regelung:
@@ -58,6 +59,14 @@ class Regelung:
         self.modus_wirksam: str = param.modus
         self.tz: tzinfo = timezone.utc
         self.p_plan = min(konfig.ev_max_leistung_kw * 1000.0, self.p_max)
+        # Start/Stopp wie an einer Maschine: Modus und Einstellungen waehlen, dann Start.
+        # Gestoppt = Wallbox gesperrt (wie Modus Aus). Abstecken stoppt. Zustand bleibt ueber
+        # einen Neustart erhalten. "extern": Ladung wurde ohne Start im Add-on begonnen (go-e-App,
+        # waehrend HA nicht verfuegbar war) – das Add-on greift bis zum Abstecken nicht ein.
+        betrieb = db.einstellung(BETRIEB_SCHLUESSEL) or {}
+        self.gestartet: bool = bool(betrieb.get("gestartet"))
+        self.extern: bool = False
+        self._steckt_letzt: bool | None = None
 
     def phasen_min_setzen(self, phasen: int) -> None:
         """Kleinste Ladeleistung nach Treiber: ids 1 Phase, A fest 3 Phasen."""
@@ -68,8 +77,39 @@ class Regelung:
     def param(self) -> Parameter:
         return self.strategie.param
 
+    # -- Start / Stopp ----------------------------------------------------------------------
+    def _betrieb_sichern(self) -> None:
+        db.einstellung_setzen(BETRIEB_SCHLUESSEL, {"gestartet": self.gestartet})
+
+    def starten(self) -> list[str]:
+        if self.gestartet:
+            return []
+        if self.param.modus == AUS:
+            return ["Erst einen Lademodus wählen"]
+        self.gestartet, self.extern = True, False
+        self._betrieb_sichern()
+        db.ereignis("info", "betrieb", f"Laden gestartet: {MODI.get(self.param.modus)}")
+        return []
+
+    def stoppen(self, grund: str = "Stopp gedrückt") -> list[str]:
+        if not self.gestartet:
+            return []
+        self.gestartet = False
+        self._betrieb_sichern()
+        db.ereignis("info", "betrieb", f"Laden gestoppt ({grund})")
+        return []
+
+    def extern_erkannt(self) -> None:
+        if not self.extern:
+            self.extern = True
+            db.ereignis("warnung", "betrieb", "Ladung läuft ohne Start im Add-on (go-e-App) – "
+                                              "das Add-on greift bis zum Abstecken nicht ein")
+
     def parameter_setzen(self, neu: dict) -> list[str]:
-        """Aenderung aus Oberflaeche/HA. Gibt Fehler zurueck; bei Fehlern bleibt alles alt."""
+        """Aenderung aus Oberflaeche/HA. Gibt Fehler zurueck; bei Fehlern bleibt alles alt.
+        Waehrend einer gestarteten Ladung gesperrt (erst Stopp)."""
+        if self.gestartet and any(self.param.als_dict().get(k) != v for k, v in neu.items()):
+            return ["Während der Ladung gesperrt – erst Stopp drücken"]
         try:
             p = Parameter.aus_dict({**self.param.als_dict(), **neu})
         except (TypeError, ValueError) as e:
@@ -119,10 +159,22 @@ class Regelung:
                     pa.wert("auto_steckt", mono), akku_vorhanden=akku_da)
         soc = self._soc_zyklus(mono, jetzt)
         p = self.param
+        # Abstecken beendet eine gestartete bzw. von aussen begonnene Ladung
+        if self._steckt_letzt is True and e.steckt is False:
+            if self.gestartet:
+                self.stoppen("Auto abgesteckt")
+            self.extern = False
+        if e.steckt is not None:
+            self._steckt_letzt = e.steckt
         self.nacht = self.tageslicht.zyklus(
             mono, pa.wert("pv_w", mono) if "pv_w" in pa.werte else None,
             p.ohne_pv_unter_w, p.ohne_pv_unter_s, p.ohne_pv_ueber_w, p.ohne_pv_ueber_s)
-        if p.modus in (MIN_PV, NUR_PV) and self.nacht:
+        if not self.gestartet or self.extern:
+            self.plan, self.modus_wirksam = None, AUS
+            a = self.strategie.schritt(e, AUS)
+            a.grund = ("Ladung über go-e-App – Add-on greift bis zum Abstecken nicht ein" if self.extern
+                       else "Gestoppt – Modus und Einstellungen prüfen, dann Start")
+        elif p.modus in (MIN_PV, NUR_PV) and self.nacht:
             # Schalter Nachtladen – an: voll aus dem Netz (wie Sofort); aus: Pause (wie Nur PV –
             # ohne Ueberschuss laedt nichts; morgens laufen Nur PV / Min + PV von selbst weiter)
             self.plan = None
@@ -165,6 +217,7 @@ class Regelung:
         a = self.aus
         return {
             "modus": self.param.modus, "modi": MODI, "parameter": self.param.als_dict(),
+            "gestartet": self.gestartet, "extern": self.extern,
             "treiber_wahl": TREIBER, "wiederanlauf_wahl": WIEDERANLAUF, "ohne_pv_wahl": OHNE_PV,
             "ohne_pv_aktiv": bool(self.nacht) if self.nacht is not None else None,
             "nachtladen": self.param.ohne_pv == "voll",
@@ -208,6 +261,7 @@ class Regelung:
             "regelzustand": None if a is None else a.zustand,
             "modus": self.param.modus,
             "treiber": self.treiber,
+            "laden": "ON" if self.gestartet else "OFF",
             "auto_soc": None if self.soc.soc(self.abbild.wert("goe_eto")) is None
             else round(self.soc.soc(self.abbild.wert("goe_eto"))),
             "zielzeit_start": (self.plan.spaetester_start.isoformat()

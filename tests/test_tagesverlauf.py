@@ -50,3 +50,15 @@ def test_vorfuellen_nur_vor_live_daten():
     assert n == 2
     assert [t for t, _ in v.punkte] == [T0, T0 + 60, T0 + 120]
     assert v.punkte[2][1]["pv"] == 100              # Live-Wert bleibt
+
+
+def test_ladestrom_hoechste_phase_mit_nachkomma():
+    from tagesverlauf import Tagesverlauf, ladestrom
+    assert ladestrom({"auto_i1": 15.6, "auto_i2": 16.1, "auto_i3": None}) == 16.1
+    assert ladestrom({}) is None
+    tv = Tagesverlauf()
+    tv.hinzufuegen(60, {"auto": 11000, "strom": 15.94})
+    tv.hinzufuegen(70, {"auto": 11000, "strom": 16.0})
+    tv.hinzufuegen(120, {})
+    d = tv.liste(0)
+    assert d["daten"][0][d["spalten"].index("strom")] == 16.0

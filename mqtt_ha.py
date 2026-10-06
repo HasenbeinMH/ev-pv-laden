@@ -170,7 +170,12 @@ def discovery_nutzlast() -> dict:
             "modus": {"platform": "sensor"},
             "treiber": _text("Aktiver Treiber", "treiber", "mdi:cog-transfer", diagnose=True),
             # Bedienung (M8)
-            "lademodus": _select("Lademodus", "lademodus", MODI.values(), "mdi:ev-station"),
+            "lademodus": _select("Lademodus", "lademodus", [n for k, n in MODI.items() if k != "aus"],
+                                 "mdi:ev-station"),
+            # Start/Stopp: jede Ladung bewusst starten; waehrend der Ladung sind Modus und
+            # Einstellungen gesperrt (Aenderungen werden abgelehnt, HA zeigt den gueltigen Wert)
+            "laden": {**_basis("switch", "Laden gestartet", "laden", "mdi:play-pause"),
+                      "value_template": "{{ value_json.laden }}", "state_on": "ON", "state_off": "OFF"},
             "treiber_wahl": _select("Treiber", "treiber_wahl", TREIBER_NAMEN.values(),
                                     "mdi:cog-transfer", konfig=True),
             "trockenlauf": {**_basis("switch", "Trockenlauf (schreibt nicht)", "trockenlauf",
@@ -238,10 +243,10 @@ def befehl_uebersetzen(schluessel: str, text: str) -> tuple[str, object]:
         if text not in ("ON", "OFF"):
             raise ValueError(f"ON/OFF erwartet, nicht '{text}'")
         return "ohne_pv", "voll" if text == "ON" else "pause"
-    if schluessel == "trockenlauf":
+    if schluessel in ("trockenlauf", "laden"):
         if text not in ("ON", "OFF"):
             raise ValueError(f"ON/OFF erwartet, nicht '{text}'")
-        return "trockenlauf", text == "ON"
+        return schluessel, text == "ON"
     if schluessel in ("akku_soc_schwelle", "ziel_soc", "puffer_min", "auto_soc"):
         return schluessel, float(text)
     if schluessel == "abfahrt":
@@ -258,7 +263,8 @@ def _rueckwaerts(namen: dict, text: str) -> str:
 
 def bedien_zustand(param, trockenlauf: bool, auto_soc: float | None) -> dict:
     """Zustandsfelder der Bedien-Entitaeten (im selben JSON wie die Sensoren)."""
-    return {"lademodus": MODI.get(param.modus), "treiber_wahl": TREIBER_NAMEN.get(param.treiber),
+    return {"lademodus": MODI.get(param.modus) if param.modus != "aus" else None,
+            "treiber_wahl": TREIBER_NAMEN.get(param.treiber),
             "nachtladen": "ON" if param.ohne_pv == "voll" else "OFF",
             "trockenlauf": "ON" if trockenlauf else "OFF",
             "akku_soc_schwelle": param.akku_soc_schwelle, "ziel_soc": param.ziel_soc,

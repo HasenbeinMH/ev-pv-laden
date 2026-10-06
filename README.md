@@ -13,7 +13,9 @@ gingen, und übergibt jede Ladung an den [EV Tracker](https://github.com/Hasenbe
 
 ## Funktionen
 
-- **Lademodi:** *Aus · Nur PV · Min + PV · Sofort · Zielzeit*. Hausakku zuerst bis zu einer
+- **Start/Stopp:** jede Ladung bewusst starten; während der Ladung sind Modus und Einstellungen
+  gesperrt, Abstecken stoppt. Ladungen über die go-e-App (HA nicht verfügbar) bleiben unangetastet.
+- **Lademodi:** *Nur PV · Min + PV · Sofort · Zielzeit*. Hausakku zuerst bis zu einer
   einstellbaren SoC-Schwelle, darüber geht sein Überschuss ins Auto; Glättung, Start-/Stopp-
   Hysterese, Mindestladedauer und -pause.
 - **Zielzeit / Ziel-SoC:** bis zum spätesten Start nur PV, danach Netzladen bis zum Ziel.
@@ -76,7 +78,7 @@ Das Gerät „EV PV-Laden“ (MQTT) bringt u. a. mit:
 
 | Art | Entitäten |
 |---|---|
-| Bedienen | Lademodus, Treiber, Trockenlauf, Hausakku-Schwelle, SoC Auto, Ziel-SoC, Abfahrt, Puffer |
+| Bedienen | Laden gestartet (Start/Stopp), Lademodus, Nachtladen, Treiber, Trockenlauf, Hausakku-Schwelle, SoC Auto, Ziel-SoC, Abfahrt, Puffer |
 | Bilanz | `sensor.ev_pv_laden_kwh_pv`, `…_kwh_akku`, `…_kwh_netz` |
 | EV Tracker | `sensor.ev_pv_laden_tracker_kwh_pv`, `…_tracker_kwh_netz`, Übergabe-Status |
 | Regelung | erlaubte Ladeleistung, Grund, Regelzustand, aktiver Treiber, Lebenszeichen |

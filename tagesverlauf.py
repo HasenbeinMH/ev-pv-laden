@@ -12,9 +12,11 @@ from prozessabbild import Signal, umrechnen
 
 ABTAST_S = 10      # Historie: Stufenfunktion alle 10 s abtasten, je Minute mitteln
 # Prozessabbild-Signal -> Groesse im Tagesverlauf
-SIGNALE = {"pv_w": "pv", "netz_w": "netz", "akku_w": "akku", "auto_w": "auto", "haus_w": "haus_w"}
+SIGNALE = {"pv_w": "pv", "netz_w": "netz", "akku_w": "akku", "auto_w": "auto", "haus_w": "haus_w",
+           "auto_i1": "strom", "auto_i2": "strom", "auto_i3": "strom"}
 
-GROESSEN = ("pv", "haus", "auto", "netz", "akku")
+GROESSEN = ("pv", "haus", "auto", "netz", "akku", "strom")
+NACHKOMMA = {"strom": 1}     # Ladestrom in A mit einer Nachkommastelle, Leistungen in ganzen W
 MAX_MINUTEN = 26 * 60
 
 
@@ -37,7 +39,7 @@ class Tagesverlauf:
                 self._anzahl[g] = self._anzahl.get(g, 0) + 1
 
     def _abschliessen(self) -> None:
-        mittel = {g: (round(self._summe[g] / self._anzahl[g]) if self._anzahl.get(g) else None)
+        mittel = {g: (_runden(g, self._summe[g] / self._anzahl[g]) if self._anzahl.get(g) else None)
                   for g in GROESSEN}
         self.punkte.append((self._minute, mittel))
         self._summe, self._anzahl = {}, {}
@@ -65,7 +67,7 @@ class Tagesverlauf:
         return [(h, sum(w) / 60.0, len(w)) for h, w in sorted(stunden.items())]
 
     def liste(self, seit_epoch: float) -> dict:
-        daten = [[t] + [m[g] for g in GROESSEN] for t, m in self.punkte if t >= seit_epoch]
+        daten = [[t] + [m.get(g) for g in GROESSEN] for t, m in self.punkte if t >= seit_epoch]
         return {"spalten": ("zeit",) + GROESSEN, "daten": daten}
 
 
@@ -106,16 +108,27 @@ def aus_historie(historie: dict, signale: dict[str, tuple[Signal, str | None]],
             for name, reihe in reihen.items():
                 werte[name], zeiger[name] = wert_zu(reihe, t, zeiger[name])
             groessen = {"pv": werte.get("pv_w"), "netz": werte.get("netz_w"), "akku": werte.get("akku_w"),
-                        "auto": werte.get("auto_w"),
+                        "auto": werte.get("auto_w"), "strom": ladestrom(werte),
                         "haus": hausverbrauch(werte, haus_enthaelt_auto)}
             for g, v in groessen.items():
                 if v is not None:
                     summen.setdefault(g, []).append(v)
         if summen:
-            ergebnis.append((minute, {g: (round(sum(summen[g]) / len(summen[g])) if g in summen else None)
+            ergebnis.append((minute, {g: (_runden(g, sum(summen[g]) / len(summen[g])) if g in summen else None)
                                       for g in GROESSEN}))
         minute += 60
     return ergebnis
+
+
+def _runden(groesse: str, wert: float) -> float:
+    return round(wert, NACHKOMMA.get(groesse))
+
+
+def ladestrom(werte: dict) -> float | None:
+    """Ladestrom je Phase: hoechster der drei Leiterstroeme der Wallbox."""
+    i = [werte.get(n) for n in ("auto_i1", "auto_i2", "auto_i3")]
+    i = [v for v in i if v is not None]
+    return max(i) if i else None
 
 
 def hausverbrauch(werte: dict, haus_enthaelt_auto: bool) -> float | None:

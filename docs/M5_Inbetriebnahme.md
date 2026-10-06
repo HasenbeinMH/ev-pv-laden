@@ -39,6 +39,9 @@ Die Wallbox lädt nicht, weil kein Auto steckt – geprüft wird nur der Schreib
 
 ## Schritt 2 – mit Auto (EV3)
 
+0. Ab 0.13.0: Modus wählen, Einstellungen prüfen, **Start** drücken (gestoppt = Wallbox gesperrt).
+   [ ] Abstecken stoppt. [ ] Ladung über die go-e-App bei gestopptem HA wird nach dem Neustart
+   als „von außen“ erkannt und nicht abgebrochen.
 1. **Nur PV** bei Sonne: [ ] go-e startet, folgt `P_erlaubt` (Diagramm: Auto ≈ P_erlaubt),
    [ ] Netz ≈ 0, [ ] Akku lädt nicht unter Schwelle für das Auto um.
 2. Wolke: [ ] Mindestleistung während Stopp-Verzögerung, [ ] Stopp nach Verzögerung.

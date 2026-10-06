@@ -68,6 +68,7 @@ def reg(tmp_path, monkeypatch):
                                                        (NUR_PV, "voll", SOFORT), (NUR_PV, "pause", NUR_PV)])
 def test_nachts(reg, modus, ohne_pv, erwartet):
     reg.parameter_setzen({"modus": modus, "ohne_pv": ohne_pv})
+    assert reg.starten() == []
     a = reg.zyklus(1.0)
     assert reg.modus_wirksam == erwartet
     if ohne_pv == "voll":
@@ -82,5 +83,6 @@ def test_ohne_pv_sensor_bleibt_min_pv(tmp_path, monkeypatch):
     k = Konfig(goe_seriennummer="325656")             # kein PV-Sensor
     r = Regelung(k, Prozessabbild(k))
     r.parameter_setzen({"modus": MIN_PV, "ohne_pv": "voll"})
+    r.starten()
     r.zyklus(1.0)
     assert r.modus_wirksam == MIN_PV

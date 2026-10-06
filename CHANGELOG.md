@@ -3,6 +3,18 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.13.0] - 2026-10-06
+
+Start/Stopp und neues Dashboard.
+
+- **Start/Stopp wie an einer Maschine:** Lademodus und Einstellungen wählen und prüfen, dann **Start**. Während der Ladung sind Modus und Einstellungen gesperrt – zum Ändern erst **Stopp**. Abstecken stoppt automatisch, jede Ladung braucht einen neuen Start. Der Zustand bleibt über einen Neustart des Add-ons erhalten
+- **Gestoppt** = Wallbox gesperrt (ersetzt den Modus „Aus“)
+- **Ladung über die go-e-App:** Ist HA nicht verfügbar, kann die Ladung direkt in der go-e-App freigegeben werden. Kommt das Add-on danach wieder (Neustart oder Wiederverbindung) und die Wallbox lädt ohne Start im Add-on, greift es bis zum Abstecken nicht ein. Läuft HA normal, gilt die Bedienung im Add-on
+- HA: neuer Schalter **„Laden gestartet“** (`switch.ev_pv_laden_laden`); Änderungen an Lademodus und Einstellungen werden während der Ladung abgelehnt
+- **Dashboard:** Kennzahlen zweizeilig über dem Energiefluss – oben Haus · Hausakku · Auto, darunter **PV-Prognose heute** (mit „bis jetzt x von y kWh“) · PV. Lademodus-Karte: Modi kompakt, darunter die **Einstellungen des gewählten Modus direkt bearbeitbar**, großer Start/Stopp-Knopf; in der Autokarte ebenfalls Start/Stopp
+- **Ladekurve** in der Autokarte: Linien für Leistung (kW), Ladestrom je Phase (A) und geladene Energie (kWh) seit Beginn der laufenden Ladung; der Strom wird auch im Tagesverlauf mitgeschrieben und nach einem Neustart aus der HA-Historie nachgeladen
+- Passt ohne Scrollen auf Full HD (nutzt die volle Breite) und ab 1366 × 768
+
 ## Integration 0.1.1 - 2026-10-06
 
 - „EV PV-Laden Prognose“ hat jetzt Icon und Logo (Ordner `brand/`, ab HA 2026.3)

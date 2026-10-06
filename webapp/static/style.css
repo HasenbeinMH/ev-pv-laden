@@ -154,14 +154,23 @@ details > summary::-webkit-details-marker { display: none; }
   font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; margin: 0; }
 
 /* ── Dashboard: Raster ohne Scrollen (ab 1000 px Breite) ───────────────── */
-main:has(#seite-live.aktiv) { max-width: 1600px; }
+main:has(#seite-live.aktiv) { max-width: 1900px; }
 .dash { display: grid; gap: 14px;
-  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, .8fr);
-  grid-template-rows: 108px minmax(0, 1fr) minmax(0, .85fr);
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr) minmax(0, .8fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, .75fr);
   grid-template-areas: "kpi ev modus" "fluss ev modus" "fluss heute heute";
   height: calc(100dvh - 128px); min-height: 560px; }
 .dash > .block { margin: 0; display: flex; flex-direction: column; min-height: 0; }
-.dash-kpi { grid-area: kpi; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+/* Kennzahlen ueber dem Energiefluss, zwei Zeilen: oben Haus/Akku/Auto, unten Prognose/PV */
+.dash-kpi { grid-area: kpi; display: grid; gap: 12px; grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-areas: "haus haus akku akku wagen wagen" "prog prog prog pv pv pv"; }
+.dash-kpi > :nth-child(1) { grid-area: prog; }
+.dash-kpi > :nth-child(2) { grid-area: pv; }
+.dash-kpi > :nth-child(3) { grid-area: haus; }
+.dash-kpi > :nth-child(4) { grid-area: akku; }
+.dash-kpi > :nth-child(5) { grid-area: wagen; }   /* "auto" ist ein CSS-Schluesselwort */
+.dash-kpi .kpi { padding: 9px 14px; }
+.dash-kpi .kpi-wert { font-size: 1.5rem; margin-top: 2px; }
 .dash-fluss { grid-area: fluss; }
 .dash-auto { grid-area: ev; }
 .dash-modus { grid-area: modus; }
@@ -196,6 +205,9 @@ main:has(#seite-live.aktiv) { max-width: 1600px; }
   font-size: .85rem; color: var(--text-2); display: flex; flex-direction: column; gap: 3px; }
 .auto-plan:empty { display: none; }
 .auto-plan b { color: var(--text); }
+.ladekurve-rahmen { flex: 1; min-height: 90px; display: flex; flex-direction: column; margin-top: 10px; }
+.ladekurve-rahmen[hidden] { display: none; }
+.ladekurve { flex: 1; min-height: 70px; }
 .auto-knoepfe { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; }
 #tracker-pruefen, #tracker-senden { font: inherit; font-size: .85rem; padding: 5px 12px; border-radius: 8px;
   border: 1px solid var(--linie); background: var(--karte-2); color: var(--text); cursor: pointer; }
@@ -210,10 +222,34 @@ main:has(#seite-live.aktiv) { max-width: 1600px; }
 .modus-liste button:hover { color: var(--text); }
 .modus-liste button.aktiv { color: var(--primary-text); font-weight: 700; border-color: var(--primary);
   background: var(--primary-hell); }
-#md-info { margin-top: auto; padding-top: 10px; }
+/* Lademodus-Karte: Modi kompakt zweispaltig, darunter die Einstellungen des gewaehlten Modus */
+#modi-dash { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#modi-dash button { padding: 7px 10px; text-align: center; }
+#modi-dash button:last-child:nth-child(odd) { grid-column: span 2; }
+.md-parameter { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--linie); }
+.md-parameter:empty { display: none; }
+.md-titel { font-size: .78rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+.md-feld { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .88rem; color: var(--text-2); }
+.md-feld .md-eingabe { display: flex; align-items: center; gap: 4px; }
+.md-feld input { width: 84px; min-height: 30px; padding: 3px 8px; text-align: right; }
+.md-feld input[type="time"] { width: 104px; }
+.md-feld .einheit { width: 26px; font-size: .8rem; }
+.md-hinweis { font-size: .82rem; color: var(--text-2); }
+.md-ok { font-size: .78rem; color: var(--ok); min-height: 1em; }
 .nacht-schalter { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
   margin-top: 10px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--linie);
   background: var(--karte-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.nacht-schalter[hidden] { display: none; }
+/* Start/Stopp wie an einer Maschine: gruen = Start, rot = Stopp */
+.md-start-rahmen { margin-top: auto; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.auto-knoepfe .start-knopf, .start-knopf { font: inherit; font-weight: 700; border: none; border-radius: 10px;
+  cursor: pointer; color: #fff; background: var(--primary); padding: 8px 16px; }
+.start-knopf.gross { padding: 12px 16px; font-size: 1.05rem; }
+.start-knopf.stopp { background: var(--kritisch); }
+.start-knopf:disabled { opacity: .5; cursor: not-allowed; }
+#modi-dash button:disabled, #modi button:disabled, .md-parameter input:disabled { opacity: .55; cursor: not-allowed; }
+.nacht-schalter:disabled { opacity: .55; cursor: not-allowed; }
 .nacht-text { display: flex; flex-direction: column; min-width: 0; }
 .schalter-bahn { width: 38px; height: 22px; border-radius: 11px; background: var(--linie); position: relative;
   flex-shrink: 0; transition: background .2s; }
@@ -238,7 +274,11 @@ main:has(#seite-live.aktiv) { max-width: 1600px; }
 @media (min-width: 1001px) and (max-height: 860px) {
   .modus-liste { gap: 4px; }
   .modus-liste button { padding: 5px 10px; }
-  .modus-liste button .klein { display: none !important; }
+  .heute-diagramm { min-height: 100px; }
+  .md-parameter { margin-top: 8px; padding-top: 6px; gap: 4px; }
+  .md-feld input { min-height: 26px; padding: 2px 8px; }
+  .start-knopf.gross { padding: 9px 16px; }
+  .nacht-schalter { margin-top: 6px; padding: 6px 10px; }
   .tb-zeile { padding: 1px 0; font-size: .82rem; }
   .tagesbilanz h3 { margin-bottom: 2px; }
   .auto-soc { font-size: 2.8rem; }
@@ -246,7 +286,8 @@ main:has(#seite-live.aktiv) { max-width: 1600px; }
 @media (max-width: 1000px) {
   .dash { height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: none; grid-template-areas: "kpi kpi" "ev modus" "fluss fluss" "heute heute"; }
-  .dash-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-kpi { grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: "prog prog" "pv haus" "akku wagen"; }
   .dash-heute { flex-direction: column !important; }
   .tagesbilanz { width: auto; }
   .heute-diagramm { height: 220px; flex: none; }
