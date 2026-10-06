@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## Integration 0.1.1 - 2026-10-06
+
+- „EV PV-Laden Prognose“ hat jetzt Icon und Logo (Ordner `brand/`, ab HA 2026.3)
+- Einrichtung: eigene Meldung, wenn das Add-on erreichbar, aber älter als 0.12.0 ist
+
 ## [0.12.0] - 2026-10-06
 
 PV-Prognose im Energie-Dashboard.

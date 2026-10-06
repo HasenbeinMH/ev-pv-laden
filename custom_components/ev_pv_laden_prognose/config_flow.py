@@ -23,6 +23,9 @@ class PrognoseConfigFlow(ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
             try:
                 await prognose_holen(self.hass, url)
+            except aiohttp.ClientResponseError as err:
+                # 404: Add-on erreichbar, aber zu alt (Schnittstelle gibt es ab 0.12.0)
+                fehler["base"] = "addon_zu_alt" if err.status == 404 else "cannot_connect"
             except (aiohttp.ClientError, asyncio.TimeoutError, TimeoutError, ValueError):
                 fehler["base"] = "cannot_connect"
             else:

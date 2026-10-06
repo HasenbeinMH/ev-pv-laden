@@ -52,7 +52,15 @@ def test_manifest_und_uebersetzungen():
     m = json.load(open(os.path.join(ORDNER, "manifest.json"), encoding="utf-8"))
     assert m["domain"] == "ev_pv_laden_prognose" and m["config_flow"] is True and "version" in m
     for datei in ("strings.json", "translations/de.json", "translations/en.json"):
-        json.load(open(os.path.join(ORDNER, datei), encoding="utf-8"))
+        d = json.load(open(os.path.join(ORDNER, datei), encoding="utf-8"))
+        assert {"cannot_connect", "addon_zu_alt"} <= set(d["config"]["error"])
+
+
+def test_markenbilder():
+    from PIL import Image
+    groessen = {"icon.png": (256, 256), "icon@2x.png": (512, 512), "logo.png": (320, 128), "logo@2x.png": (640, 256)}
+    for datei, groesse in groessen.items():
+        assert Image.open(os.path.join(ORDNER, "brand", datei)).size == groesse
 
 
 # --- Add-on: Schnittstelle /api/prognose/stunden ----------------------------------------------

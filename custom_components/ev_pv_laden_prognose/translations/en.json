@@ -10,7 +10,8 @@
       }
     },
     "error": {
-      "cannot_connect": "The add-on is not reachable at this address or does not provide a forecast yet."
+      "cannot_connect": "The add-on is not reachable at this address or does not provide a forecast yet.",
+      "addon_zu_alt": "The add-on is reachable but too old – please update EV PV-Laden to version 0.12.0 or newer."
     },
     "abort": {
       "already_configured": "This add-on address is already configured."

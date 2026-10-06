@@ -10,7 +10,8 @@
       }
     },
     "error": {
-      "cannot_connect": "Das Add-on ist unter dieser Adresse nicht erreichbar oder liefert noch keine Prognose."
+      "cannot_connect": "Das Add-on ist unter dieser Adresse nicht erreichbar oder liefert noch keine Prognose.",
+      "addon_zu_alt": "Das Add-on ist erreichbar, aber zu alt – bitte EV PV-Laden auf Version 0.12.0 oder neuer aktualisieren."
     },
     "abort": {
       "already_configured": "Diese Add-on-Adresse ist schon eingerichtet."
