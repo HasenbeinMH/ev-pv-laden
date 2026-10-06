@@ -709,12 +709,20 @@ function prognoseZeichnen() {
   prognoseDiagramm = prognoseDiagramm || echarts.init($("prognose-diagramm"));
   diagramme[1] = prognoseDiagramm;
   const a = achsen();
-  // Wh der Stunde (Zeitstempel = Stundenende) als mittlere Leistung in der Stundenmitte
-  const daten = (prognose.stunden || []).map(s => [new Date(s.zeit).getTime() - 1800e3, s.wh]);
-  const gemessen = (prognose.gemessen || []).map(s => [new Date(s.zeit).getTime() - 1800e3, s.wh]);
+  // Energie je Stunde in kWh (Zeitstempel = Stundenende), Balken in der Stundenmitte
+  const stunde = s => [new Date(s.zeit).getTime() - 1800e3, s.wh / 1000];
+  const daten = (prognose.stunden || []).map(stunde);
+  const gemessen = (prognose.gemessen || []).map(stunde);
   prognoseDiagramm.setOption({
-    animation: false, grid: {left: 60, right: 16, top: 16, bottom: 30},
-    tooltip: a.tooltip, xAxis: a.x, yAxis: a.y,
+    animation: false, grid: {left: 60, right: 16, top: 36, bottom: 30},
+    tooltip: {...a.tooltip, formatter: ps => {
+      const t = new Date(ps[0].value[0] - 1800e3), h = t.getHours();
+      const kopf = `${t.toLocaleDateString("de-DE", {day: "2-digit", month: "2-digit"})} · ${h}–${(h + 1) % 24} Uhr`;
+      return kopf + ps.map(p => `<br>${p.marker} ${esc(p.seriesName)} <b style="float:right;margin-left:16px">`
+        + `${p.value[1] === null ? "–" : zahl(p.value[1], 2) + " kWh"}</b>`).join("");
+    }},
+    xAxis: a.x, yAxis: {...a.y, name: "kWh je Stunde", nameTextStyle: {color: css("--text-2"), align: "left"},
+                        axisLabel: {...a.y.axisLabel, formatter: v => zahl(v, 1)}},
     legend: {top: 0, textStyle: {color: a.text}},
     series: [{name: "PV gemessen (heute)", type: "bar", barWidth: "35%", barGap: "0%", data: gemessen,
               color: css("--einspeisung")},
@@ -723,7 +731,7 @@ function prognoseZeichnen() {
                          lineStyle: {color: css("--text-2"), type: "dashed"}, data: [{xAxis: Date.now()}]}},
              ...(prognose.vergleich ? [{name: "Vergleich: Home Assistant", type: "line", step: "middle",
                showSymbol: false, color: css("--text-3"), lineStyle: {width: 1.5, type: "dashed"},
-               data: (prognose.vergleich.stunden || []).map(s => [new Date(s.zeit).getTime() - 1800e3, s.wh])}] : [])],
+               data: (prognose.vergleich.stunden || []).map(stunde)}] : [])],
   }, true);
 }
 

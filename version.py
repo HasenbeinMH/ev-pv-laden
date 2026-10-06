@@ -8,9 +8,15 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.13.3"
+VERSION = "0.13.4"
 
 CHANGELOG = [
+    {
+        "version": "0.13.4",
+        "datum": "2026-10-06",
+        "titel": "Prognose in kWh",
+        "aenderungen": ["Reiter Prognose: Balken in kWh je Stunde statt W, Tooltip mit Stunde (z. B. 13-14 Uhr)"],
+    },
     {
         "version": "0.13.3",
         "datum": "2026-10-06",
