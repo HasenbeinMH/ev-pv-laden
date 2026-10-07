@@ -8,9 +8,19 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.13.6"
+VERSION = "0.14.0"
 
 CHANGELOG = [
+    {
+        "version": "0.14.0",
+        "datum": "2026-10-07",
+        "titel": "Morgentau in der PV-Prognose",
+        "aenderungen": [
+            "Eigene Prognose: nach Tau-Naechten (Okt-Maerz) die ersten 4 Sonnenstunden x0,7; Einstufung der Nacht aus Taupunkt, Wolken, Wind und Regen der Open-Meteo-Prognose",
+            "Protokoll je Tag (Klasse, Merkmale, Morgenprognose ohne/mit Korrektur) in Log, Ereignissen und Datenbank zum Nachjustieren",
+            "Reiter Prognose: Hinweis, wenn der Vormittag wegen Morgentau abgeschwaecht ist",
+        ],
+    },
     {
         "version": "0.13.6",
         "datum": "2026-10-07",

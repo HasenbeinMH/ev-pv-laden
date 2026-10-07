@@ -204,6 +204,8 @@ def api_prognose(request: Request):
     p, quelle = lz.prognose()
     aus = p.uebersicht(jetzt)
     aus["quelle"] = quelle
+    if lz.pv and p is lz.prognose_eigen:
+        aus["morgentau"] = lz.pv.tau_anzeige(jetzt.date())
     if p is not lz.prognose_ha and lz.prognose_ha.werte:
         aus["vergleich"] = lz.prognose_ha.uebersicht(jetzt)
     # Gemessene PV-Erzeugung heute (Tageskurve) als Stundenwerte zum Vergleich

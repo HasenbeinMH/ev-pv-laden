@@ -17,6 +17,7 @@ from datetime import date, datetime, timedelta, timezone
 import aiohttp
 
 import datenbank as db
+import morgentau
 import pvdaten
 import pvmodell as pm
 from prognose import Prognose
@@ -24,6 +25,8 @@ from prognose import Prognose
 log = logging.getLogger("pvprognose")
 
 SCHLUESSEL = "pvmodell"
+TAU_PROTOKOLL = "morgentau_protokoll"   # je Tag Klasse und Morgenprognose (fuer das Nachjustieren)
+TAU_PROTOKOLL_TAGE = 120
 TRAINING_TAGE = 3 * 365
 NEU_TRAINIEREN_TAGE = 7
 PROGNOSE_S = 3600
@@ -46,6 +49,7 @@ class PVPrognose:
         self._zuletzt_prognose = NIE
         self._zuletzt_sauberkeit = NIE
         self._zuletzt_training_versuch = NIE
+        self.tau: dict[date, dict] = {}         # Morgentau je Tag (Anzeige, Protokoll)
 
     @property
     def aktiv(self) -> bool:
@@ -172,9 +176,43 @@ class PVPrognose:
                                                {"past_days": 1, "forecast_days": 3})
         stunden = sorted(einstrahlung.items())
         werte = self.modell.prognose(stunden, self.flaechen, lat, lon, tz)
+        try:
+            wetter = await pvdaten.wetter_holen(sitzung, lat, lon, {"past_days": 2, "forecast_days": 3})
+            werte, tage = morgentau.korrigieren(werte, wetter, lat, lon, tz)
+            self._tau_merken(tage, datetime.now(tz).date())
+        except Exception as e:                  # ohne Wetter: Prognose ohne Tau-Korrektur
+            log.warning("Morgentau: Wetter nicht geladen (%s) – Prognose ohne Korrektur", e)
         # Format wie energy/solar_forecast: Zeitstempel = Ende der Stunde, Wh
         wh = {(t + timedelta(hours=1)).isoformat(): round(kwh * 1000) for t, kwh in werte}
         self.ziel.setzen({"eigenes_modell": {"wh_hours": wh}}, datetime.now(tz))
+
+    def _tau_merken(self, tage: dict[date, dict], heute: date) -> None:
+        """Heute und morgen: bei neuer oder geaenderter Einstufung protokollieren und je Tag
+        speichern – die letzte Einstufung vor Sonnenaufgang zaehlt beim Nachjustieren."""
+        protokoll = db.einstellung(TAU_PROTOKOLL) or {}
+        for tag in (heute, heute + timedelta(days=1)):
+            info = tage.get(tag)
+            if not info:
+                continue
+            alt = self.tau.get(tag)
+            if not alt or (alt["klasse"], alt["faktor"]) != (info["klasse"], info["faktor"]):
+                zeile = morgentau.text(tag, info)
+                log.info(zeile)
+                db.ereignis("info", "pvmodell", zeile)
+            protokoll[tag.isoformat()] = {**info, "stand": datetime.now(timezone.utc).isoformat(timespec="minutes")}
+        grenze = (heute - timedelta(days=TAU_PROTOKOLL_TAGE)).isoformat()
+        db.einstellung_setzen(TAU_PROTOKOLL, {k: v for k, v in sorted(protokoll.items()) if k >= grenze})
+        self.tau = tage
+
+    def tau_anzeige(self, heute: date) -> dict:
+        """Morgentau fuer heute und morgen (Oberflaeche)."""
+        aus = {}
+        for name, tag in (("heute", heute), ("morgen", heute + timedelta(days=1))):
+            i = self.tau.get(tag)
+            if i:
+                aus[name] = {"klasse": i["klasse"], "faktor": i["faktor"], "bis": i["morgen_bis"],
+                             "ohne_kwh": i["morgen_ohne_kwh"], "mit_kwh": i["morgen_mit_kwh"]}
+        return aus
 
     # ── Anzeige ──────────────────────────────────────────────────────────────────────
     def status(self, heute: date) -> dict:

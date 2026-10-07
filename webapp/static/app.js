@@ -683,6 +683,10 @@ async function prognoseLaden() {
   $("prognose-unter").textContent = prognose.verfuegbar
     ? `heute ${kwh(prognose.heute_kwh)}, Rest ${kwh(prognose.heute_rest_kwh)} · morgen ${kwh(prognose.morgen_kwh)}`
     : (prognose.fehler || "");
+  // Morgentau: Vormittag nach Tau-Naechten abgeschwaecht (nur Winterhalbjahr)
+  for (const [name, t] of Object.entries(prognose.morgentau || {})) {
+    if (t.faktor !== 1) $("prognose-unter").textContent += ` · Morgentau ${name}: Vormittag bis ${t.bis} ×${zahl(t.faktor, 1)}`;
+  }
   $("prognose-quelle").textContent = prognose.quelle || "";
   $("prognose-quelle").className = "marke " + (prognose.quelle === "eigenes Modell" ? "trocken" : "");
   if (prognose.quelle) $("k-prognose-unter").textContent += " · " + prognose.quelle;

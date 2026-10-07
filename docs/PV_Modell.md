@@ -58,6 +58,29 @@ Zerlegung mit nachträglich **gemessener** Einstrahlung (Open-Meteo-Archiv, ohne
 und machte die Tagesprognose schlechter (2,77 → 3,04 kWh). Deshalb dient sie als Anzeige und
 Reinigungshinweis; nur nach einer gemeldeten Reinigung wirkt sie auf die Prognose.
 
+## Morgentau
+
+Das Kennfeld kennt den Morgentau nur als Mittelwert. Nach klaren, feuchten, windstillen
+Nächten liegt im Winterhalbjahr (Okt–März) morgens Tau auf den Modulen, und die ersten
+Sonnenstunden bringen deutlich weniger. Auswertung 2024–2026 (`dev/modell/tau.py`): nach
+Tau-Nächten am Morgen etwa 0,7–0,8 der Prognose, im Sommer kein Effekt.
+
+Seit 0.14.0 (`morgentau.py`): Aus der Open-Meteo-Prognose der Nacht (9 h vor Sonnenaufgang)
+wird die Nacht eingestuft:
+
+| Klasse | Bedingung |
+|---|---|
+| nass (Regen) | mehr als 0,2 mm Regen in der Nacht |
+| Tau wahrscheinlich | Temperatur – Taupunkt ≤ 1,5 K (letzte 3 h vor Sonnenaufgang), Wolken < 50 %, Wind < 12 km/h |
+| Tau möglich | Temperatur – Taupunkt ≤ 3 K, Wolken < 70 % |
+| trocken | sonst |
+
+Bei „Tau wahrscheinlich“ und „Tau möglich“ werden im Winterhalbjahr die ersten 4
+Sonnenstunden mit dem Faktor 0,7 gerechnet (Startwert, am 18.10.2026 mit echten
+Herbstmorgen nachjustieren). Je Tag werden Klasse, Merkmale und Morgenprognose ohne/mit
+Korrektur im Protokoll, in den Ereignissen und in der Datenbank (`morgentau_protokoll`,
+120 Tage) festgehalten. Ohne Wetterdaten bleibt die Prognose unkorrigiert.
+
 ## Betrieb im Add-on
 
 - Training beim ersten Start und danach wöchentlich (bis 3 Jahre HA-Statistik + Open-Meteo).

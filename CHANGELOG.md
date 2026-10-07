@@ -3,6 +3,15 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.14.0] - 2026-10-07
+
+Morgentau in der PV-Prognose.
+
+- **Morgentau-Korrektur:** Nach klaren, feuchten, windstillen Nächten liegt im Winterhalbjahr (Okt–März) morgens Tau auf den Modulen. Die eigene Prognose rechnet dann die ersten 4 Sonnenstunden mit dem Faktor 0,7. Die Nacht wird aus Taupunkt, Wolken, Wind und Regen der Open-Meteo-Prognose eingestuft (Tau wahrscheinlich / möglich / trocken / nass)
+- **Protokoll je Tag:** Einstufung, Merkmale der Nacht und Morgenprognose ohne/mit Korrektur stehen im Protokoll und in den Ereignissen und werden 120 Tage gespeichert – Grundlage zum Nachjustieren des Faktors
+- Reiter Prognose: Hinweis „Morgentau heute: Vormittag bis HH:MM ×0,7“
+- Details: `docs/PV_Modell.md`, Abschnitt „Morgentau“
+
 ## [0.13.6] - 2026-10-07
 
 - **Protokoll:** Die Meldung „keine Prognose im Energie-Dashboard zugeordnet“ kam alle 15 Minuten, obwohl dort die eigene Integration eingetragen ist. Das ist gewollt und kein Fehler mehr; Meldungen zur HA-Prognose erscheinen nur noch, wenn sich etwas ändert

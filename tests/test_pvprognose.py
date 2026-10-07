@@ -53,6 +53,10 @@ def umgebung(tmp_path, monkeypatch):
             e = s + timedelta(days=4)
         return gti_fuer(s, e)
 
+    async def wetter_holen(sitzung, lat, lon, zeitraum):
+        return {}                                   # kein Nachtwetter -> keine Tau-Korrektur
+
+    monkeypatch.setattr(pvdaten, "wetter_holen", wetter_holen)
     monkeypatch.setattr(pvdaten, "pv_messung", pv_messung)
     monkeypatch.setattr(pvdaten, "gti_holen", gti_holen)
 

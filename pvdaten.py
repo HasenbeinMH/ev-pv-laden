@@ -18,6 +18,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import aiohttp
 
+import morgentau
 import pvmodell as pm
 
 log = logging.getLogger("pvdaten")
@@ -61,6 +62,17 @@ async def gti_holen(sitzung: aiohttp.ClientSession, url: str, lat: float, lon: f
         gti_eintragen(daten, f.name, ziel)
     # nur Stunden, fuer die alle Flaechen einen Wert haben
     return {t: g for t, g in ziel.items() if len(g) == len(flaechen)}
+
+
+async def wetter_holen(sitzung: aiohttp.ClientSession, lat: float, lon: float, zeitraum: dict) -> dict:
+    """Wetter der Naechte fuer die Morgentau-Korrektur (Open-Meteo-Prognose, UTC)."""
+    params = {"latitude": round(lat, 2), "longitude": round(lon, 2), "timezone": "UTC",
+              "hourly": morgentau.WETTER_GROESSEN, **zeitraum}
+    async with sitzung.get(PROGNOSE, params=params, timeout=aiohttp.ClientTimeout(total=60)) as r:
+        daten = await r.json(content_type=None)
+        if r.status != 200 or daten.get("error"):
+            raise RuntimeError(f"Open-Meteo {r.status}: {daten.get('reason', daten)}")
+    return morgentau.wetter_eintragen(daten)
 
 
 # ── HA-Statistik ───────────────────────────────────────────────────────────────────
