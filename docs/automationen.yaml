@@ -80,9 +80,12 @@
           {%- if a.soc is not none %} · SoC ≈ {{ a.soc }} %{% endif %}
 
 # ── 3. Abends: lohnt sich das Laden in den nächsten Tagen? (ab 0.15.0) ─────────────────────
-# Jeden Abend um 19:00 die 7-Tage-Vorschau als Push aufs Handy (nur an eine Person).
-# notify.mein_handy durch die eigene Entität der HA-App ersetzen (Einstellungen → Geräte →
-# Entitäten, Domäne „notify“). Heute wird übersprungen – die Liste beginnt mit morgen.
+# Abends um 19:00 die 7-Tage-Vorschau per Telegram an den Standard-Chat – nur wenn ab morgen
+# mindestens ein Tag „mäßig“ oder „lohnt sich“ ist (sonst keine Nachricht). Die Liste steht im
+# Attribut, dafür gibt es keine eingebaute Bedingung – daher ein Template.
+# parse_mode plain_text: Bei MarkdownV2 sind Punkte reservierte Zeichen und die Nachricht
+# wird abgelehnt. Statt Telegram geht z. B. auch notify.send_message an die HA-App.
+# Heute wird übersprungen – die Liste beginnt mit morgen.
 - alias: "EV PV-Laden: Lade-Vorschau abends"
   description: "Push mit der 7-Tage-Vorschau: an welchen Tagen sich das Laden mit PV lohnt"
   mode: single
@@ -90,18 +93,20 @@
     - trigger: time
       at: "19:00:00"
   conditions:
-    - condition: template
-      value_template: "{{ (state_attr('sensor.ev_pv_laden_pv_woche_auto', 'tage') or []) | count > 1 }}"
+    - alias: "Ab morgen mindestens ein Tag mäßig oder lohnt sich (nicht nur rot)"
+      condition: template
+      value_template: >-
+        {{ (state_attr('sensor.ev_pv_laden_pv_woche_auto', 'tage') or [])[1:]
+           | rejectattr('bewertung', 'eq', 'kaum') | list | count > 0 }}
   actions:
-    - action: notify.send_message
-      target:
-        entity_id: notify.mein_handy
+    - action: telegram_bot.send_message
       data:
+        parse_mode: plain_text
         title: "PV fürs Auto – nächste Tage"
         message: |-
           {%- set punkt = {'lohnt sich': '🟢', 'mäßig': '🟡', 'kaum': '🔴'} %}
           {%- set tage = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] %}
-          {%- for t in state_attr('sensor.ev_pv_laden_pv_woche_auto', 'tage')[1:] %}
+          {%- for t in (state_attr('sensor.ev_pv_laden_pv_woche_auto', 'tage') or [])[1:] %}
           {%- set d = strptime(t.datum, '%Y-%m-%d') %}
           {{ punkt.get(t.bewertung, '') }} {{ tage[d.weekday()] }} {{ d.strftime('%d.%m.') }}: {{ '%.1f' | format(t.auto_kwh) | replace('.', ',') }} kWh fürs Auto ({{ '%.0f' | format(t.pv_kwh) }} kWh PV)
           {%- endfor %}

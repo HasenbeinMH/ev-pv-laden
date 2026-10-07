@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.15.1"
+VERSION = "0.15.2"
 
 CHANGELOG = [
+    {
+        "version": "0.15.2",
+        "datum": "2026-10-07",
+        "titel": "Vorlage Lade-Vorschau per Telegram",
+        "aenderungen": [
+            "docs/automationen.yaml: Lade-Vorschau abends per Telegram (parse_mode plain_text), nur wenn ab morgen ein Tag maessig oder lohnt sich ist",
+            "Am Add-on selbst keine Aenderung",
+        ],
+    },
     {
         "version": "0.15.1",
         "datum": "2026-10-07",
