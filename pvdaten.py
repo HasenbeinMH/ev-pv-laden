@@ -116,6 +116,38 @@ async def pv_messung(ha, k, start: datetime, ende: datetime) -> dict[datetime, f
     return pv_aus_statistik(ergebnis, ids)
 
 
+async def verbrauch_holen(ha, k, ende: datetime, tage_haus: int = 28, tage_akku: int = 14
+                          ) -> tuple[dict[datetime, float], float | None]:
+    """Fuer die 7-Tage-Vorschau: Hausverbrauch je Stunde (W, ohne Auto) der letzten Wochen und
+    mittlere Entladung des Hausakkus je Tag (kWh) – beides aus der HA-Langzeitstatistik."""
+    auto = f"sensor.goe_{k.goe_seriennummer}_nrg_11"
+    ids = [s for s in (k.sensor_haus, auto if k.sensor_haus_enthaelt_auto else "", k.sensor_akku_entladen) if s]
+    if not ids:
+        return {}, None
+    stunden = await ha.anfrage({
+        "type": "recorder/statistics_during_period",
+        "start_time": (ende - timedelta(days=tage_haus)).isoformat(), "end_time": ende.isoformat(),
+        "statistic_ids": ids, "period": "hour", "types": ["mean", "change"],
+        "units": {"power": "W", "energy": "kWh"},
+    }, timeout=HA_TIMEOUT_S) or {}
+
+    def reihe(sid, art):
+        return {datetime.fromtimestamp(z["start"] / 1000, timezone.utc): z.get(art)
+                for z in stunden.get(sid, []) if z.get(art) is not None}
+
+    haus = reihe(k.sensor_haus, "mean") if k.sensor_haus else {}
+    if k.sensor_haus_enthaelt_auto:
+        a = reihe(auto, "mean")
+        haus = {t: w - (a.get(t) or 0.0) for t, w in haus.items()}
+    akku = None
+    if k.sensor_akku_entladen:
+        grenze = ende - timedelta(days=tage_akku)
+        werte = [v for t, v in reihe(k.sensor_akku_entladen, "change").items() if t >= grenze]
+        if werte:
+            akku = round(max(sum(werte), 0.0) / tage_akku, 2)
+    return haus, akku
+
+
 def datum(t: datetime) -> str:
     return t.astimezone(timezone.utc).date().isoformat()
 

@@ -209,6 +209,10 @@ def discovery_nutzlast() -> dict:
                        "event_types": ["fertig", "ziel_erreicht"], "icon": "mdi:car-electric"},
             # PV-Prognose (eigenes Modell) und Sauberkeit der Anlage
             "pv_prognose_heute": _prognose("PV-Prognose heute", "pv_prognose_heute"),
+            # 7-Tage-Vorschau: Zustand = kWh fuers Auto in 7 Tagen, Attribut "tage" = Liste je Tag
+            "pv_woche_auto": {**_prognose("PV fürs Auto (7 Tage)", "pv_woche_auto"), "icon": "mdi:car-electric",
+                              "json_attributes_topic": ZUSTAND,
+                              "json_attributes_template": "{{ {'tage': value_json.pv_woche} | tojson }}"},
             "pv_prognose_rest_heute": _prognose("PV-Prognose Rest heute", "pv_prognose_rest_heute"),
             "pv_prognose_morgen": _prognose("PV-Prognose morgen", "pv_prognose_morgen"),
             "pv_sauberkeit": {

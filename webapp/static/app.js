@@ -687,6 +687,7 @@ async function prognoseLaden() {
   for (const [name, t] of Object.entries(prognose.morgentau || {})) {
     if (t.faktor !== 1) $("prognose-unter").textContent += ` · Morgentau ${name}: Vormittag bis ${t.bis} ×${zahl(t.faktor, 1)}`;
   }
+  wocheZeigen(prognose);
   $("prognose-quelle").textContent = prognose.quelle || "";
   $("prognose-quelle").className = "marke " + (prognose.quelle === "eigenes Modell" ? "trocken" : "");
   if (prognose.quelle) $("k-prognose-unter").textContent += " · " + prognose.quelle;
@@ -707,6 +708,22 @@ async function prognoseLaden() {
       + `${kwh(prognose.prognose_bis_jetzt_kwh)} (${abw >= 0 ? "+" : ""}${zahl(abw)} %)`;
   }
   prognoseZeichnen();
+}
+// 7-Tage-Vorschau: PV, Nachladen Hausakku, Ueberschuss fuers Auto, Ampel
+function wocheZeigen(p) {
+  const w = p.woche || [], a = p.woche_annahmen || {};
+  const ampel = {"lohnt sich": "ok", "mäßig": "warn", "kaum": "schlecht"};
+  $("woche").innerHTML = w.length ? w.map(t => {
+    const d = new Date(t.datum + "T12:00");
+    return `<tr><td>${d.toLocaleDateString("de-DE", {weekday: "short", day: "2-digit", month: "2-digit"})}</td>
+      <td class="zahl">${zahl(t.pv_kwh, 1)} kWh</td><td class="zahl">${zahl(t.akku_kwh, 1)} kWh</td>
+      <td class="zahl"><b>${zahl(t.auto_kwh, 1)} kWh</b></td>
+      <td><span class="punkt-status ${ampel[t.bewertung] || ""}"></span>${esc(t.bewertung)}</td></tr>`;
+  }).join("") : '<tr><td colspan="5" class="klein">keine Vorschau – nur mit eigenem Prognosemodell</td></tr>';
+  $("woche-unter").textContent = w.length
+    ? `abzüglich Hausverbrauch (Ø ${a.haus_kw === null || a.haus_kw === undefined ? "?" : zahl(a.haus_kw, 2)} kW) und `
+      + `Nachladen Hausakku (Ø ${a.akku_kwh === null || a.akku_kwh === undefined ? "?" : zahl(a.akku_kwh, 1)} kWh/Tag); `
+      + "Auto ab 1,4 kW · lohnt sich ab 6 kWh, mäßig ab 2 kWh" : "";
 }
 function prognoseZeichnen() {
   if (!window.echarts || location.hash !== "#prognose" || !prognose) return;

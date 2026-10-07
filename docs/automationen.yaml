@@ -78,3 +78,30 @@
           {%- if a.pv_anteil is not none %}, davon {{ a.pv_anteil }} % Sonne{% endif %}
           {%- endif %}
           {%- if a.soc is not none %} · SoC ≈ {{ a.soc }} %{% endif %}
+
+# ── 3. Abends: lohnt sich das Laden in den nächsten Tagen? (ab 0.15.0) ─────────────────────
+# Jeden Abend um 19:00 die 7-Tage-Vorschau als Push aufs Handy (nur an eine Person).
+# notify.mein_handy durch die eigene Entität der HA-App ersetzen (Einstellungen → Geräte →
+# Entitäten, Domäne „notify“). Heute wird übersprungen – die Liste beginnt mit morgen.
+- alias: "EV PV-Laden: Lade-Vorschau abends"
+  description: "Push mit der 7-Tage-Vorschau: an welchen Tagen sich das Laden mit PV lohnt"
+  mode: single
+  triggers:
+    - trigger: time
+      at: "19:00:00"
+  conditions:
+    - condition: template
+      value_template: "{{ (state_attr('sensor.ev_pv_laden_pv_woche_auto', 'tage') or []) | count > 1 }}"
+  actions:
+    - action: notify.send_message
+      target:
+        entity_id: notify.mein_handy
+      data:
+        title: "PV fürs Auto – nächste Tage"
+        message: |-
+          {%- set punkt = {'lohnt sich': '🟢', 'mäßig': '🟡', 'kaum': '🔴'} %}
+          {%- set tage = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] %}
+          {%- for t in state_attr('sensor.ev_pv_laden_pv_woche_auto', 'tage')[1:] %}
+          {%- set d = strptime(t.datum, '%Y-%m-%d') %}
+          {{ punkt.get(t.bewertung, '') }} {{ tage[d.weekday()] }} {{ d.strftime('%d.%m.') }}: {{ '%.1f' | format(t.auto_kwh) | replace('.', ',') }} kWh fürs Auto ({{ '%.0f' | format(t.pv_kwh) }} kWh PV)
+          {%- endfor %}

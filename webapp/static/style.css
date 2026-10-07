@@ -137,7 +137,7 @@ tr:last-child td { border-bottom: none; }
 .klein { color: var(--text-2); font-size: .8rem; }
 .ok { color: var(--ok); } .schlecht { color: var(--kritisch); } .warnung { color: #ca8a04; }
 .punkt-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--text-3); }
-.punkt-status.ok { background: var(--ok); } .punkt-status.schlecht { background: var(--kritisch); }
+.punkt-status.ok { background: var(--ok); } .punkt-status.warn { background: var(--warnung); } .punkt-status.schlecht { background: var(--kritisch); }
 .hinweis { color: var(--text-2); font-size: .82rem; margin: -4px 0 10px; }
 .fehler { padding: 10px 14px; border-radius: 10px; color: var(--kritisch); border: 1px solid var(--kritisch);
   background: color-mix(in srgb, var(--kritisch) 8%, transparent); margin-bottom: 16px; }

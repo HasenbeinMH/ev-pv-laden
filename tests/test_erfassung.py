@@ -116,7 +116,7 @@ def test_mqtt_zustand_passt_zur_discovery(frische_db):
     reg.zyklus()
     # PV-Werte liefert die Laufzeit (Laufzeit._pv_mqtt)
     pv = {"pv_prognose_heute": 1.0, "pv_prognose_rest_heute": 0.5, "pv_prognose_morgen": 2.0,
-          "pv_sauberkeit": 80}
+          "pv_sauberkeit": 80, "pv_woche_auto": 12.0, "pv_woche": []}
     zustand = {**erf.mqtt_zustand(), **reg.mqtt_zustand(), **pv,
                **mqtt_ha.bedien_zustand(reg.param, True, None),
                **__import__("tracker").Uebergabe(K).mqtt_zustand()}

@@ -195,11 +195,11 @@ def ueberschuss_aus_csv(pfad: str) -> tuple[list[float], float | None]:
 
 
 def prognose_simuliert(jetzt) -> dict:
-    """Nur Entwicklung: Glockenkurve heute/morgen im Format von energy/solar_forecast."""
+    """Nur Entwicklung: Glockenkurve fuer 8 Tage im Format von energy/solar_forecast."""
     from datetime import timedelta
     wh = {}
     tag0 = jetzt.replace(hour=0, minute=0, second=0, microsecond=0)
-    for tag, faktor in ((0, 1.0), (1, 0.7)):
+    for tag, faktor in enumerate((1.0, 0.7, 0.25, 0.45, 0.9, 1.0, 0.6, 0.35)):
         for h in range(7, 20):
             t = tag0 + timedelta(days=tag, hours=h)
             wh[t.isoformat()] = round(max(0.0, math.sin((h - 7) / 12 * math.pi)) * 6500 * faktor)

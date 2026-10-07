@@ -51,7 +51,8 @@ Umlaute in Bezeichnern und Kommentaren als ae/oe/ue, in Texten der Oberfläche e
 - Bilanz/Ladevorgänge: `erfassung.py`, `ladevorgang.py`, `bilanz.py`, `tracker.py`
   (Übergabe an den EV Tracker), `meldungen.py`.
 - PV-Prognose: `pvmodell.py`, `pvdaten.py`, `pvprognose.py` (eigenes Modell aus
-  HA-Statistik + Open-Meteo), `prognose.py`, `morgentau.py` (Abschwächung der Morgenstunden nach Tau-Nächten).
+  HA-Statistik + Open-Meteo), `prognose.py`, `morgentau.py` (Abschwächung der Morgenstunden nach Tau-Nächten),
+  `wochenprognose.py` (7-Tage-Vorschau „lohnt sich das Laden?“).
   Doku: `docs/PV_Modell.md`.
 - HA-Anbindung: `ha_client.py` (WebSocket), `mqtt_ha.py` (MQTT-Discovery, Bedien-Entitäten).
   Entitäts-IDs sind über `default_entity_id`/`unique_id` fest – Anzeigenamen dürfen

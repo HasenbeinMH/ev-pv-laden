@@ -206,6 +206,9 @@ def api_prognose(request: Request):
     aus["quelle"] = quelle
     if lz.pv and p is lz.prognose_eigen:
         aus["morgentau"] = lz.pv.tau_anzeige(jetzt.date())
+        aus["woche"] = lz.pv.woche
+        aus["woche_annahmen"] = {"haus_kw": round(sum(lz.pv.haus_profil.values()) / len(lz.pv.haus_profil), 2)
+                                 if lz.pv.haus_profil else None, "akku_kwh": lz.pv.akku_bedarf}
     if p is not lz.prognose_ha and lz.prognose_ha.werte:
         aus["vergleich"] = lz.prognose_ha.uebersicht(jetzt)
     # Gemessene PV-Erzeugung heute (Tageskurve) als Stundenwerte zum Vergleich

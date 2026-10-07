@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.15.0] - 2026-10-07
+
+7-Tage-Vorschau: lohnt sich das Laden?
+
+- Die eigene PV-Prognose rechnet jetzt **8 Tage** (heute + 7)
+- **Reiter Prognose:** neue Tabelle je Tag mit PV, Nachladen des Hausakkus, **Überschuss fürs Auto** und Ampel (lohnt sich ab 6 kWh · mäßig ab 2 kWh · kaum)
+- Überschuss = PV – typischer Hausverbrauch je Uhrzeit (Mittel der letzten 4 Wochen aus der HA-Statistik, ohne Auto) – Tagesbedarf des Hausakkus (mittlere Entladung der letzten 14 Tage). Fürs Auto zählen nur Stunden ab 1,4 kW (kleinste Ladeleistung)
+- **HA-Sensor** „PV fürs Auto (7 Tage)“ (`sensor.ev_pv_laden_pv_woche_auto`) mit Attribut `tage`; Vorlage für einen Push jeden Abend um 19:00 in `docs/automationen.yaml` (Nr. 3)
+- Ab Tag 4 wird die Wetterprognose spürbar unsicherer
+
 ## [0.14.0] - 2026-10-07
 
 Morgentau in der PV-Prognose.

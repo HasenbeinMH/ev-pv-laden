@@ -19,6 +19,7 @@ import aiohttp
 import datenbank as db
 import morgentau
 import pvdaten
+import wochenprognose
 import pvmodell as pm
 from prognose import Prognose
 
@@ -27,6 +28,8 @@ log = logging.getLogger("pvprognose")
 SCHLUESSEL = "pvmodell"
 TAU_PROTOKOLL = "morgentau_protokoll"   # je Tag Klasse und Morgenprognose (fuer das Nachjustieren)
 TAU_PROTOKOLL_TAGE = 120
+VERBRAUCH_S = 24 * 3600                 # Hausprofil und Akkubedarf einmal am Tag neu
+PROGNOSE_TAGE = 8                       # heute + 7 Tage (Vorschau "lohnt sich das Laden?")
 TRAINING_TAGE = 3 * 365
 NEU_TRAINIEREN_TAGE = 7
 PROGNOSE_S = 3600
@@ -50,6 +53,10 @@ class PVPrognose:
         self._zuletzt_sauberkeit = NIE
         self._zuletzt_training_versuch = NIE
         self.tau: dict[date, dict] = {}         # Morgentau je Tag (Anzeige, Protokoll)
+        self.woche: list[dict] = []             # 7-Tage-Vorschau
+        self.haus_profil: dict[int, float] = {}
+        self.akku_bedarf: float | None = None
+        self._zuletzt_verbrauch = NIE
 
     @property
     def aktiv(self) -> bool:
@@ -173,18 +180,35 @@ class PVPrognose:
     async def prognose_aktualisieren(self, ha, sitzung, tz) -> None:
         lat, lon = ha.standort
         einstrahlung = await pvdaten.gti_holen(sitzung, pvdaten.PROGNOSE, lat, lon, self.flaechen,
-                                               {"past_days": 1, "forecast_days": 3})
+                                               {"past_days": 1, "forecast_days": PROGNOSE_TAGE})
         stunden = sorted(einstrahlung.items())
         werte = self.modell.prognose(stunden, self.flaechen, lat, lon, tz)
         try:
-            wetter = await pvdaten.wetter_holen(sitzung, lat, lon, {"past_days": 2, "forecast_days": 3})
+            wetter = await pvdaten.wetter_holen(sitzung, lat, lon, {"past_days": 2, "forecast_days": PROGNOSE_TAGE})
             werte, tage = morgentau.korrigieren(werte, wetter, lat, lon, tz)
             self._tau_merken(tage, datetime.now(tz).date())
         except Exception as e:                  # ohne Wetter: Prognose ohne Tau-Korrektur
             log.warning("Morgentau: Wetter nicht geladen (%s) – Prognose ohne Korrektur", e)
+        await self._woche_rechnen(ha, werte, tz)
         # Format wie energy/solar_forecast: Zeitstempel = Ende der Stunde, Wh
         wh = {(t + timedelta(hours=1)).isoformat(): round(kwh * 1000) for t, kwh in werte}
         self.ziel.setzen({"eigenes_modell": {"wh_hours": wh}}, datetime.now(tz))
+
+    async def _woche_rechnen(self, ha, werte, tz) -> None:
+        """7-Tage-Vorschau; Hausprofil und Akkubedarf einmal am Tag aus der HA-Statistik."""
+        jetzt = time.monotonic()
+        if jetzt - self._zuletzt_verbrauch > VERBRAUCH_S:
+            try:
+                haus, akku = await pvdaten.verbrauch_holen(ha, self.konfig, datetime.now(timezone.utc))
+                self.haus_profil, self.akku_bedarf = wochenprognose.haus_profil(haus, tz), akku
+                self._zuletzt_verbrauch = jetzt
+                log.info("7-Tage-Vorschau: Hausverbrauch im Mittel %.2f kW, Hausakku %s kWh je Tag",
+                         sum(self.haus_profil.values()) / max(len(self.haus_profil), 1),
+                         "?" if akku is None else f"{akku:.1f}")
+            except Exception as e:
+                log.warning("7-Tage-Vorschau: Verbrauch nicht geladen (%s)", e)
+        self.woche = wochenprognose.berechnen(werte, self.haus_profil, self.akku_bedarf or 0.0, tz,
+                                              datetime.now(tz).date())
 
     def _tau_merken(self, tage: dict[date, dict], heute: date) -> None:
         """Heute und morgen: bei neuer oder geaenderter Einstufung protokollieren und je Tag

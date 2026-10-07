@@ -12,7 +12,7 @@ import logging
 import os
 import time
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import datenbank as db
 import konfig as konfig_mod
@@ -122,6 +122,11 @@ class Laufzeit:
             self.prognose_eigen.setzen(prognose_simuliert(jetzt), jetzt)
             self.pv = PVPrognose(self.konfig, self.prognose_eigen)
             self.pv.modell, self.pv.zustand = pvmodell_demo(), "Simulation"
+            import wochenprognose
+            werte = [(datetime.fromisoformat(t) - timedelta(hours=1), wh / 1000)
+                     for t, wh in prognose_simuliert(jetzt)["sim"]["wh_hours"].items()]
+            self.pv.haus_profil, self.pv.akku_bedarf = {h: 0.7 for h in range(24)}, 6.0
+            self.pv.woche = wochenprognose.berechnen(werte, self.pv.haus_profil, 6.0, self.erfassung.tz, jetzt.date())
             self.ha_fehler = "Simulation (EVPV_SIMULATION) – keine Verbindung zu Home Assistant"
             log.warning(self.ha_fehler)
         elif daten is None:
@@ -392,7 +397,9 @@ class Laufzeit:
         s = self.pv.modell.sauberkeit if self.pv else None
         return {"pv_prognose_heute": u.get("heute_kwh"), "pv_prognose_rest_heute": u.get("heute_rest_kwh"),
                 "pv_prognose_morgen": u.get("morgen_kwh"),
-                "pv_sauberkeit": None if s is None else round(s * 100)}
+                "pv_sauberkeit": None if s is None else round(s * 100),
+                "pv_woche_auto": round(sum(t["auto_kwh"] for t in self.pv.woche), 1) if self.pv and self.pv.woche else None,
+                "pv_woche": self.pv.woche if self.pv else []}
 
     def prognose(self) -> tuple[Prognose, str]:
         """Angezeigte Prognose: eigenes Modell, sonst HA (Energie-Dashboard)."""

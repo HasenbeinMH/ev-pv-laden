@@ -8,9 +8,20 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.14.0"
+VERSION = "0.15.0"
 
 CHANGELOG = [
+    {
+        "version": "0.15.0",
+        "datum": "2026-10-07",
+        "titel": "7-Tage-Vorschau: lohnt sich das Laden?",
+        "aenderungen": [
+            "Eigene Prognose rechnet 8 Tage (heute + 7)",
+            "Reiter Prognose: Tabelle je Tag mit PV, Nachladen Hausakku, Ueberschuss fuers Auto und Ampel (lohnt sich / maessig / kaum)",
+            "Ueberschuss = PV - typischer Hausverbrauch je Uhrzeit (4 Wochen HA-Statistik) - Hausakku-Tagesbedarf (14 Tage); Auto erst ab 1,4 kW",
+            "HA-Sensor 'PV fuers Auto (7 Tage)' mit Attribut 'tage' (z. B. fuer eine Nachricht)",
+        ],
+    },
     {
         "version": "0.14.0",
         "datum": "2026-10-07",
