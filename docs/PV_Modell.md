@@ -86,9 +86,10 @@ Korrektur im Protokoll, in den Ereignissen und in der Datenbank (`morgentau_prot
 Seit 0.15.0 (`wochenprognose.py`): Die eigene Prognose rechnet 8 Tage (heute + 7). Je Stunde:
 Überschuss = PV – typischer Hausverbrauch dieser Uhrzeit (Mittel der letzten 4 Wochen aus
 der HA-Statistik, Auto herausgerechnet). Davon bekommt zuerst der Hausakku seinen typischen
-Tagesbedarf (mittlere Entladung je Tag der letzten 14 Tage), der Rest zählt fürs Auto – aber
-nur Stunden mit mindestens 1,4 kW (kleinste Ladeleistung, 6 A einphasig). Ampel: ab 6 kWh
-„lohnt sich“, ab 2 kWh „mäßig“, sonst „kaum“. Anzeige im Reiter Prognose und als HA-Sensor
+Tagesbedarf (mittlere Entladung je Tag der letzten 14 Tage), der Rest zählt fürs Auto –
+gerechnet wie Lademodus „Min + PV“: jeder Rest zählt, auch unter der kleinsten Ladeleistung
+(den Rest liefert das Netz). Ampel: ab 3 kWh „lohnt sich“, ab 1 kWh „mäßig“, sonst „kaum“.
+Seit 0.15.1; 0.15.0 zählte nur Stunden ab 1,4 kW – im Oktober blieb so praktisch nichts. Anzeige im Reiter Prognose und als HA-Sensor
 `sensor.ev_pv_laden_pv_woche_auto` (Zustand = kWh fürs Auto in 7 Tagen, Attribut `tage`).
 Ab Tag 4 wird die Wetterprognose spürbar unsicherer.
 

@@ -723,7 +723,7 @@ function wocheZeigen(p) {
   $("woche-unter").textContent = w.length
     ? `abzüglich Hausverbrauch (Ø ${a.haus_kw === null || a.haus_kw === undefined ? "?" : zahl(a.haus_kw, 2)} kW) und `
       + `Nachladen Hausakku (Ø ${a.akku_kwh === null || a.akku_kwh === undefined ? "?" : zahl(a.akku_kwh, 1)} kWh/Tag); `
-      + "Auto ab 1,4 kW · lohnt sich ab 6 kWh, mäßig ab 2 kWh" : "";
+      + "gerechnet wie Min + PV · lohnt sich ab 3 kWh, mäßig ab 1 kWh" : "";
 }
 function prognoseZeichnen() {
   if (!window.echarts || location.hash !== "#prognose" || !prognose) return;

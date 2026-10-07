@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.15.1] - 2026-10-07
+
+- 7-Tage-Vorschau gerechnet wie **„Min + PV“**: Fürs Auto zählt jeder PV-Rest nach Hausverbrauch und Hausakku, nicht nur Stunden ab 1,4 kW. Mit der strengen Rechnung blieb im Oktober praktisch nichts übrig
+- Ampel: lohnt sich ab **3 kWh**, mäßig ab **1 kWh**
+
 ## [0.15.0] - 2026-10-07
 
 7-Tage-Vorschau: lohnt sich das Laden?

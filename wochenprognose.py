@@ -5,14 +5,14 @@
 Je Stunde der eigenen PV-Prognose (inkl. Morgentau):
   Ueberschuss = PV - typischer Hausverbrauch dieser Uhrzeit (Mittel der letzten Wochen)
   davon zuerst der Hausakku, bis er seinen typischen Tagesbedarf (mittlere Entladung je Tag)
-  wieder hat – das Add-on gibt dem Hausakku Vorrang –, der Rest geht ans Auto,
-  aber nur, wenn er die kleinste Ladeleistung erreicht (6 A einphasig = 1,4 kW).
-Bewertung je Tag nach den kWh fuers Auto.
+  wieder hat – das Add-on gibt dem Hausakku Vorrang –, der Rest geht ans Auto.
+Gerechnet wie Lademodus "Min + PV": das Auto laedt mit Mindestleistung und nimmt jeden
+PV-Rest mit (auch unter 1,4 kW, den Rest liefert das Netz).
+Bewertung je Tag nach den kWh PV fuers Auto.
 """
 from datetime import date, datetime, timedelta
 
-LADE_MIN_KW = 1.4                 # 6 A einphasig: darunter kann das Auto nicht mit PV laden
-LOHNT_KWH, MAESSIG_KWH = 6.0, 2.0  # Ampel: ab 6 kWh "lohnt sich", ab 2 kWh "mäßig"
+LOHNT_KWH, MAESSIG_KWH = 3.0, 1.0  # Ampel: ab 3 kWh PV fuers Auto "lohnt sich", ab 1 kWh "mäßig"
 TAGE = 7
 LOHNT, MAESSIG, KAUM = "lohnt sich", "mäßig", "kaum"
 
@@ -56,9 +56,7 @@ def berechnen(werte: list[tuple[datetime, float]], profil: dict[int, float], akk
             nimm = min(ueber, akku_rest)
             akku_rest -= nimm
             akku += nimm
-            ueber -= nimm
-            if ueber >= LADE_MIN_KW:
-                auto += ueber
+            auto += ueber - nimm
         aus.append({"datum": tag.isoformat(), "pv_kwh": round(pv, 1), "akku_kwh": round(akku, 1),
                     "auto_kwh": round(auto, 1), "bewertung": bewertung(auto)})
     return aus

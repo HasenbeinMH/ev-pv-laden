@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.15.0"
+VERSION = "0.15.1"
 
 CHANGELOG = [
+    {
+        "version": "0.15.1",
+        "datum": "2026-10-07",
+        "titel": "7-Tage-Vorschau wie Min + PV",
+        "aenderungen": [
+            "Fuers Auto zaehlt jeder PV-Rest nach Haus und Hausakku (wie Lademodus Min + PV), nicht nur Stunden ab 1,4 kW",
+            "Ampel: lohnt sich ab 3 kWh, maessig ab 1 kWh",
+        ],
+    },
     {
         "version": "0.15.0",
         "datum": "2026-10-07",
