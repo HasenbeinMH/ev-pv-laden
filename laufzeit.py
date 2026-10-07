@@ -360,11 +360,13 @@ class Laufzeit:
         while True:
             if self.ha and self.ha.verbunden:
                 try:
-                    antwort = await self.ha.anfrage({"type": "energy/solar_forecast"})
-                    antwort = await self._ohne_eigene_prognose(antwort or {})
-                    self.prognose_ha.setzen(antwort or {}, datetime.now(self.erfassung.tz))
-                    if self.prognose_ha.fehler:
-                        log.info("PV-Prognose (HA): %s", self.prognose_ha.fehler)
+                    roh = await self.ha.anfrage({"type": "energy/solar_forecast"}) or {}
+                    antwort = await self._ohne_eigene_prognose(roh)
+                    vorher = self.prognose_ha.fehler
+                    self.prognose_ha.setzen(antwort, datetime.now(self.erfassung.tz),
+                                            nur_eigene=bool(roh) and not antwort)
+                    if self.prognose_ha.fehler != vorher:     # nur bei Aenderung, nicht alle 15 min
+                        log.info("PV-Prognose (HA): %s", self.prognose_ha.fehler or "wieder verfuegbar")
                     await asyncio.sleep(PROGNOSE_S)
                     continue
                 except Exception as e:

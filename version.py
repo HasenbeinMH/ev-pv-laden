@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.13.5"
+VERSION = "0.13.6"
 
 CHANGELOG = [
+    {
+        "version": "0.13.6",
+        "datum": "2026-10-07",
+        "titel": "Protokoll aufgeraeumt, Start nach Host-Neustart",
+        "aenderungen": [
+            "Protokoll: 'keine Prognose im Energie-Dashboard zugeordnet' nicht mehr alle 15 min; ist nur die eigene Integration zugeordnet, ist das kein Fehler",
+            "Nach einem Neustart des HA-Hosts starten Training, Sauberkeit und eigene Prognose sofort (vorher bis zu 6 h / 24 h / 1 h verzoegert)",
+        ],
+    },
     {
         "version": "0.13.5",
         "datum": "2026-10-06",

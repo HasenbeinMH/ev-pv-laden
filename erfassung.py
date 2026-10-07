@@ -58,7 +58,7 @@ class Erfassung:
         self.live: dict[str, float] | None = None
         self._trapez_gesichert = self.bilanz.z.kwh_trapez
         self._zuletzt_gesichert = time.monotonic()
-        self._zuletzt_gesendet = 0.0
+        self._zuletzt_gesendet = float("-inf")   # noch nie (monotonic zaehlt ab Systemstart)
         self._ama_gemeldet: float | None = None
         # Tagesbuchungen seit dem letzten Sichern: {datum: {pv, akku, netz, ohne, eto}}
         self._offen_tag: dict[str, dict] = {}

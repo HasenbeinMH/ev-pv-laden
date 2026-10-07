@@ -39,15 +39,19 @@ class Prognose:
         self.fehler: str | None = None
         self.eintraege = 0
 
-    def setzen(self, antwort: dict, jetzt: datetime) -> None:
+    def setzen(self, antwort: dict, jetzt: datetime, nur_eigene: bool = False) -> None:
+        """nur_eigene: im Energie-Dashboard ist nur unsere Integration zugeordnet (herausgerechnet)
+        – gewollt, kein Fehler; es gibt dann nur keinen Vergleich."""
         self.eintraege = len(antwort or {})
         self.werte = zusammenfassen(antwort)
         self.stand = jetzt
-        if not self.eintraege:
+        if self.eintraege:
+            self.fehler = None
+        elif nur_eigene:
+            self.fehler = "nur die eigene Prognose im Energie-Dashboard zugeordnet – kein Vergleich"
+        else:
             self.fehler = ("keine Prognose im Energie-Dashboard zugeordnet "
                            "(Energie -> Solarmodule -> Prognose der Solarproduktion)")
-        else:
-            self.fehler = None
 
     def _summe(self, von: datetime, bis: datetime) -> float:
         """Wh im Zeitraum. Stunde (Ende t) anteilig, wenn sie den Rand schneidet."""

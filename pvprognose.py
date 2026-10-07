@@ -28,6 +28,9 @@ TRAINING_TAGE = 3 * 365
 NEU_TRAINIEREN_TAGE = 7
 PROGNOSE_S = 3600
 SAUBERKEIT_S = 24 * 3600
+# Startwert der Zeitgeber: "noch nie". Nicht 0.0 – time.monotonic() zaehlt ab Systemstart,
+# kurz nach einem Neustart des Hosts waere sonst alles noch "gerade erst erledigt".
+NIE = float("-inf")
 TAKT_S = 60
 
 
@@ -40,9 +43,9 @@ class PVPrognose:
         self.zustand = "wartet auf Home Assistant"
         self.fehler: str | None = None
         self.training_laeuft = False
-        self._zuletzt_prognose = 0.0
-        self._zuletzt_sauberkeit = 0.0
-        self._zuletzt_training_versuch = 0.0
+        self._zuletzt_prognose = NIE
+        self._zuletzt_sauberkeit = NIE
+        self._zuletzt_training_versuch = NIE
 
     @property
     def aktiv(self) -> bool:
@@ -116,7 +119,7 @@ class PVPrognose:
             self.modell = neu
             self._sichern()
             self.fehler = None
-            self._zuletzt_prognose = 0.0   # sofort neu rechnen
+            self._zuletzt_prognose = NIE   # sofort neu rechnen
             text = (f"PV-Modell trainiert: {neu.kennzahlen['tage']} Tage, {neu.kennzahlen['felder']} "
                     f"Kennfeld-Felder, Schmutzverlust im Mittel {neu.kennzahlen['verlust_schmutz_prozent']} %")
             log.info(text)
@@ -158,7 +161,7 @@ class PVPrognose:
         self.modell.gereinigt_am = heute.isoformat()
         self.modell.sauberkeit, self.modell.sauberkeit_stand = 1.0, heute.isoformat()
         self._sichern()
-        self._zuletzt_prognose = 0.0
+        self._zuletzt_prognose = NIE
         db.ereignis("info", "pvmodell", f"Anlage gereinigt am {heute:%d.%m.%Y} – Prognose "
                                         f"+{(self.modell.zuschlag(heute) - 1) * 100:.0f} %")
 

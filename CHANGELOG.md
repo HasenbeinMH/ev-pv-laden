@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.13.6] - 2026-10-07
+
+- **Protokoll:** Die Meldung „keine Prognose im Energie-Dashboard zugeordnet“ kam alle 15 Minuten, obwohl dort die eigene Integration eingetragen ist. Das ist gewollt und kein Fehler mehr; Meldungen zur HA-Prognose erscheinen nur noch, wenn sich etwas ändert
+- **Nach einem Neustart des HA-Hosts** starten Training, Sauberkeit und eigene Prognose sofort. Vorher konnten sie sich um bis zu 6 h (Training), 24 h (Sauberkeit) bzw. 1 h (Prognose) verzögern, weil die Zeitgeber an der Laufzeit seit Systemstart hingen
+
 ## [0.13.5] - 2026-10-06
 
 - Entwicklung: Auswertung, wie Morgentau die Prognose der Morgenstunden beeinflusst (`dev/modell/tau.py`). Ergebnis: nur im Winterhalbjahr spürbar, Tagesprognose kaum betroffen – am Add-on selbst keine Änderung
