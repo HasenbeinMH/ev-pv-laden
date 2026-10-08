@@ -396,8 +396,11 @@ async function heuteLaden() {
         formatter: x => zahl(x / 1000, Number.isInteger(x / 1000) ? 0 : 1) + " kW"}},
       series: [reihe("PV", "pv", "--solar", true), reihe("Haus", "haus", "--verbrauch", true),
                reihe("Auto", "auto", "--auto", true),
+               // Prognose = Energie je Stunde; auf der kW-Achse als mittlere Leistung der Stunde,
+               // im Tooltip als kWh in der Stunde
                ...(prognose && prognose.stunden ? [{name: "PV-Prognose", type: "line", step: "middle",
                  showSymbol: false, color: css("--solar"), lineStyle: {width: 1.5, type: "dashed"},
+                 tooltip: {valueFormatter: x => x === null || x === undefined ? "–" : zahl(x / 1000, 2) + " kWh/h"},
                  data: prognose.stunden.map(s => [new Date(s.zeit).getTime() - 1800e3, s.wh])
                    .filter(([t]) => t >= tag.getTime() && t < tag.getTime() + 86400e3)}] : [])],
     }, true);

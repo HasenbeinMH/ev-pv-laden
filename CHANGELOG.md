@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.15.3] - 2026-10-08
+
+- Dashboard, Diagramm „Heute“: Die PV-Prognose steht im Tooltip als **kWh je Stunde** statt W. Auf der kW-Achse bleibt sie als mittlere Leistung der Stunde eingezeichnet, damit sie zur gemessenen Leistung passt
+
 ## [0.15.2] - 2026-10-07
 
 - Vorlage „Lade-Vorschau abends“ (`docs/automationen.yaml`, Nr. 3) jetzt per **Telegram** mit `parse_mode: plain_text` (bei MarkdownV2 lehnt Telegram die Punkte ab) und **nur, wenn ab morgen mindestens ein Tag „mäßig“ oder „lohnt sich“ ist**
