@@ -123,7 +123,7 @@ def z(s, e=None):
 def test_regelung_zielzeit_schaltet_auf_sofort(reg):
     pa, g = reg.abbild, "goe_325656"
     for eid, zst in {"binary_sensor.goe_325656_car_0": z("on"), f"sensor.{g}_eto": z(1000, "kWh"),
-                     f"sensor.{g}_rbt": z(1), f"sensor.{g}_nrg_11": z(0, "W")}.items():
+                     f"sensor.{g}_nrg_0": z(1), f"sensor.{g}_nrg_11": z(0, "W")}.items():
         pa.aktualisieren(eid, zst, 0.0)
     reg.tz = TZ
     assert reg.p_plan == P_MAX                       # min(22 kW, 16,56 kW)

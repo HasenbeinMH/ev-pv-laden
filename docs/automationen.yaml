@@ -4,8 +4,10 @@
 # je Automation einen Block (ohne den Listenstrich) einfügen und speichern.
 # Seriennummer der go-e (hier 325656) ggf. anpassen.
 #
-# Telegram wie bei den vorhandenen NC-Automationen: telegram_bot.send_message an den
-# Standard-Chat. Mit einem anderen Dienst: nur die Aktion „Benachrichtigen“ tauschen.
+# Telegram: telegram_bot.send_message mit parse_mode plain_text. Ohne entity_id geht die
+# Nachricht an den Standard-Chat des Bots; mit entity_id: notify.<chat> an einen bestimmten
+# Chat (z. B. nur an eine Person). Bei mehreren Bots immer einen Chat angeben.
+# Mit einem anderen Dienst: nur die Aktion „Benachrichtigen“ tauschen.
 
 # ── 1. Watchdog ─────────────────────────────────────────────────────────────────────────────
 # Das Add-on sendet alle 10 s ein Lebenszeichen. Bleibt es 2 min aus oder ist das Add-on
@@ -53,15 +55,17 @@
 #   ziel_erreicht  Zielzeit: Ladestand erreicht
 # Attribute: kwh, kwh_pv (inkl. Hausakku), kwh_netz, pv_anteil, soc, ziel_soc, start
 - alias: "EV PV-Laden: Ladung fertig"
-  description: "Telegram, wenn das Auto fertig geladen hat oder der Ladestand erreicht ist"
+  description: "Telegram, wenn das Auto fertig geladen hat oder der Ladestand (Laden bis) erreicht ist"
   mode: queued
   triggers:
     - trigger: state
       entity_id: event.ev_pv_laden_ladung
       not_from: "unavailable"
   conditions:
-    - condition: template
-      value_template: "{{ trigger.to_state.attributes.event_type in ['fertig', 'ziel_erreicht'] }}"
+    - condition: state
+      entity_id: event.ev_pv_laden_ladung
+      attribute: event_type
+      state: ["fertig", "ziel_erreicht"]
   actions:
     - variables:
         a: "{{ trigger.to_state.attributes }}"
@@ -77,7 +81,7 @@
           {{ '%.1f' | format(a.kwh) | replace('.', ',') }} kWh geladen
           {%- if a.pv_anteil is not none %}, davon {{ a.pv_anteil }} % Sonne{% endif %}
           {%- endif %}
-          {%- if a.soc is not none %} · SoC ≈ {{ a.soc }} %{% endif %}
+          {%- if a.event_type == 'fertig' and a.soc is not none %} · Ladestand ≈ {{ a.soc }} %{% endif %}
 
 # ── 3. Abends: lohnt sich das Laden in den nächsten Tagen? (ab 0.15.0) ─────────────────────
 # Abends um 19:00 die 7-Tage-Vorschau per Telegram an den Standard-Chat – nur wenn ab morgen

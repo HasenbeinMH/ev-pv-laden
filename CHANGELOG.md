@@ -3,6 +3,12 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.15.4] - 2026-10-08
+
+- **Lebenszeichen der Wallbox korrigiert:** Bisher diente die „Zeit seit Boot“ als Lebenszeichen – marq24 liefert sie aber in Stunden, sie ändert sich also nur stündlich. Im Leerlauf stand die Wallbox deshalb auf rot und ihre Werte (Ladeleistung, Fahrzeugstatus …) galten als veraltet; der Treiber hätte nicht gestartet. Jetzt zählen die Spannungen L1–L3 und N (ändern sich alle paar Sekunden)
+- Wallbox-Werte gelten 60 s als aktuell (vorher 15 s) – beim Laden ändert sich die Ladeleistung ohnehin jede Sekunde
+- Vorlage „Ladung fertig“ (`docs/automationen.yaml`): Telegram mit Ziel-Chat, native Bedingung, „Ladestand“ statt „SoC“
+
 ## [0.15.3] - 2026-10-08
 
 - Dashboard, Diagramm „Heute“: Die PV-Prognose steht im Tooltip als **kWh je Stunde** statt W. Auf der kW-Achse bleibt sie als mittlere Leistung der Stunde eingezeichnet, damit sie zur gemessenen Leistung passt

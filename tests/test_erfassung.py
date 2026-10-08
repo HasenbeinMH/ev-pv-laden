@@ -37,7 +37,7 @@ class Anlage:
         pa.aktualisieren(K.sensor_netz, z(einspeisung_se, "W"), t)          # SolarEdge: + = Einspeisung
         pa.aktualisieren(K.sensor_akku_leistung, z(akku_se_laden, "W"), t)  # SolarEdge: + = Laden
         pa.aktualisieren(K.sensor_akku_soc, z(80, "%"), t)
-        pa.aktualisieren(f"sensor.goe_{G}_rbt", z(int(t * 1000)), t)
+        pa.aktualisieren(f"sensor.goe_{G}_nrg_0", z(int(t * 1000)), t)
         pa.aktualisieren(f"sensor.goe_{G}_nrg_11", z(p_auto, "W"), t)
         pa.aktualisieren(f"binary_sensor.goe_{G}_car_0", z("on" if steckt else "off"), t)
         self.eto += p_auto / 1000 / 3600
@@ -102,7 +102,7 @@ def test_zaehler_tabelle_verhindert_ruecksprung(frische_db):
 def test_ama_warnung(frische_db):
     pa = Prozessabbild(K)
     erf = Erfassung(K, pa)
-    pa.aktualisieren(f"sensor.goe_{G}_rbt", z(1), 1.0)
+    pa.aktualisieren(f"sensor.goe_{G}_nrg_0", z(1), 1.0)
     pa.aktualisieren(f"number.goe_{G}_ama", z(16, "A"), 1.0)
     erf.zyklus(1.0, T0)
     erf.zyklus(2.0, T0)   # nur einmal melden

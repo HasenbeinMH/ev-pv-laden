@@ -63,8 +63,17 @@ def test_goe_lebenszeichen_getrennt_vom_messgeraet():
     pa.aktualisieren("sensor.goe_325656_nrg_11", zst("0", "W"), 100.0)
     pa.aktualisieren(K.sensor_netz, zst("10", "W"), 200.0)    # SolarEdge-Lebenszeichen hilft nicht
     assert pa.wert("auto_w", 201.0) is None
-    pa.aktualisieren("sensor.goe_325656_rbt", zst("123456"), 200.0)
+    pa.aktualisieren("sensor.goe_325656_nrg_2", zst("231.6", "V"), 200.0)   # jede Phase zaehlt
     assert pa.wert("auto_w", 201.0) == 0.0
+    assert pa.wert("auto_w", 259.0) == 0.0                     # Wallbox-Werte gelten 60 s
+    assert pa.wert("auto_w", 261.0) is None
+
+
+def test_rbt_ist_kein_lebenszeichen_mehr():
+    """marq24 liefert die Zeit seit Boot in Stunden – aendert sich nur stuendlich."""
+    pa = Prozessabbild(K)
+    assert "sensor.goe_325656_rbt" not in pa.entity_ids
+    assert {"sensor.goe_325656_nrg_0", "sensor.goe_325656_nrg_3"} <= set(pa.entity_ids)
 
 
 def test_energie_wh_nach_kwh_und_binaer():

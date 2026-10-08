@@ -57,7 +57,7 @@ def reg(tmp_path, monkeypatch):
     db.initialisieren()
     k = Konfig(goe_seriennummer="325656", sensor_pv="sensor.pv")
     r = Regelung(k, Prozessabbild(k))
-    for eid, s, e in (("binary_sensor.goe_325656_car_0", "on", None), ("sensor.goe_325656_rbt", "1", None),
+    for eid, s, e in (("binary_sensor.goe_325656_car_0", "on", None), ("sensor.goe_325656_nrg_0", "1", None),
                       ("sensor.goe_325656_nrg_11", "0", "W"), ("sensor.pv", "0", "W"),
                       (k.sensor_netz, "0", "W"), (k.sensor_akku_leistung, "0", "W"), (k.sensor_akku_soc, "50", "%")):
         r.abbild.aktualisieren(eid, {"s": s, "a": {"unit_of_measurement": e} if e else {}}, 0.0)

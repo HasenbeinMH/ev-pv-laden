@@ -8,9 +8,19 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.15.3"
+VERSION = "0.15.4"
 
 CHANGELOG = [
+    {
+        "version": "0.15.4",
+        "datum": "2026-10-08",
+        "titel": "Lebenszeichen der Wallbox",
+        "aenderungen": [
+            "Lebenszeichen der Wallbox = Spannungen L1-L3 und N statt 'Zeit seit Boot' (marq24 liefert diese in Stunden, aendert sich nur stuendlich) - die Wallbox stand dadurch im Leerlauf auf rot und ihre Werte galten als veraltet",
+            "Wallbox-Werte gelten 60 s als aktuell (vorher 15 s)",
+            "docs/automationen.yaml: Ladung fertig per Telegram mit Ziel-Chat, native Bedingung, 'Ladestand' statt 'SoC'",
+        ],
+    },
     {
         "version": "0.15.3",
         "datum": "2026-10-08",

@@ -15,7 +15,11 @@ Lebenszeichens. Das Lebenszeichen ist ein Sensor desselben Geraets, der sich
 staendig aendert – denn HA meldet einen gleichbleibenden Wert nicht erneut
 (Akku 0 W, SoC 100 %, Wallbox 0 W im Leerlauf). Zwei Geraete, zwei Lebensbits:
   lebenszeichen      Messgeraet (SolarEdge: Netzleistung, aendert sich alle ~2 s)
-  goe_lebenszeichen  Wallbox (Zeit seit Boot – Annahme, wird in M3 gemessen)
+  goe_lebenszeichen  Wallbox: Spannungen L1-L3 und N (gemessen 08.10.2026: aendern sich alle
+                     1-5 s, einzeln aber auch mal 20-40 s nicht). Die "Zeit seit Boot" (rbt)
+                     taugt nicht – marq24 liefert sie in Stunden.
+Wallbox-Werte gelten bis GOE_MAX_ALTER_S (60 s) als aktuell: beim Laden aendert sich die
+Ladeleistung ohnehin jede Sekunde, im Leerlauf genuegt das, um "Wallbox weg" zu erkennen.
 """
 import time
 from dataclasses import dataclass, field
@@ -31,6 +35,7 @@ _FAKTOR = {
     ENERGIE: {"Wh": 0.001, "kWh": 1.0, "MWh": 1000.0},
 }
 UNGUELTIG = ("unknown", "unavailable", "none", "null", "")
+GOE_MAX_ALTER_S = 60
 
 
 @dataclass(frozen=True)
@@ -43,6 +48,8 @@ class Signal:
     # Name des Lebenszeichen-Signals, dessen Empfang das Alter ebenfalls zuruecksetzt
     lebenszeichen: str | None = None
     pflicht: bool = True          # fehlt es, ist keine Regelung moeglich
+    weitere: tuple[str, ...] = ()  # weitere Entitaeten, deren Empfang dieses Signal auffrischt
+    max_alter_s: float | None = None   # abweichende Gueltigkeitsdauer (sonst Konfig max_alter_s)
 
 
 def signale(k: Konfig) -> list[Signal]:
@@ -73,11 +80,13 @@ def signale(k: Konfig) -> list[Signal]:
                             "Lebenszeichen Messgeraet", pflicht=False))
 
     def goe(name, entity, art, text, pflicht=True):
-        return Signal(name, entity, art, text, pflicht=pflicht, lebenszeichen="goe_lebenszeichen")
+        return Signal(name, entity, art, text, pflicht=pflicht, lebenszeichen="goe_lebenszeichen",
+                      max_alter_s=GOE_MAX_ALTER_S)
 
     liste += [
-        Signal("goe_lebenszeichen", f"sensor.{g}_rbt", TEXT, "Lebenszeichen Wallbox (Zeit seit Boot)",
-               pflicht=False),
+        Signal("goe_lebenszeichen", f"sensor.{g}_nrg_0", TEXT, "Lebenszeichen Wallbox (Spannung L1–L3, N)",
+               pflicht=False, weitere=(f"sensor.{g}_nrg_1", f"sensor.{g}_nrg_2", f"sensor.{g}_nrg_3"),
+               max_alter_s=GOE_MAX_ALTER_S),
         goe("auto_w", f"sensor.{g}_nrg_11", LEISTUNG, "Ladeleistung Auto"),
         goe("auto_i1", f"sensor.{g}_nrg_4", STROM, "Strom L1", pflicht=False),
         goe("auto_i2", f"sensor.{g}_nrg_5", STROM, "Strom L2", pflicht=False),
@@ -149,7 +158,8 @@ class Prozessabbild:
         for sig in signale(self.konfig):
             mw = Messwert(sig)
             self.werte[sig.name] = mw
-            self._nach_entity.setdefault(sig.entity_id, []).append(mw)
+            for eid in (sig.entity_id, *sig.weitere):
+                self._nach_entity.setdefault(eid, []).append(mw)
 
     @property
     def entity_ids(self) -> list[str]:
@@ -183,7 +193,8 @@ class Prozessabbild:
         if mw is None or mw.wert is None:
             return False
         alter = self.alter_s(name, jetzt)
-        return alter is not None and alter <= self.konfig.max_alter_s
+        grenze = mw.signal.max_alter_s or self.konfig.max_alter_s
+        return alter is not None and alter <= grenze
 
     def wert(self, name: str, jetzt: float | None = None):
         """Gueltiger Wert oder None – die Regelung bekommt nie einen veralteten Wert."""

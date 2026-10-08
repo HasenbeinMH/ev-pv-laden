@@ -29,7 +29,7 @@ def reg(tmp_path, monkeypatch):
 
 def stecken(r, an, t=0.0, auto_w=0):
     for eid, zst in {"binary_sensor.goe_325656_car_0": z("on" if an else "off"),
-                     "sensor.goe_325656_rbt": z(1), "sensor.goe_325656_nrg_11": z(auto_w, "W")}.items():
+                     "sensor.goe_325656_nrg_0": z(1), "sensor.goe_325656_nrg_11": z(auto_w, "W")}.items():
         r.abbild.aktualisieren(eid, zst, t)
 
 

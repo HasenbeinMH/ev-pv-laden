@@ -161,7 +161,7 @@ class LiveSimulator:
         w = {k.sensor_netz: z(round(-netz if k.sensor_netz_invertieren else netz, 1), "W"),
              k.sensor_akku_leistung: z(round(-akku_w if k.sensor_akku_leistung_invertieren else akku_w), "W"),
              k.sensor_akku_soc: z(round(self.akku.soc, 1), "%"),
-             f"sensor.{g}_rbt": z(int(_t.time() * 1000)),
+             f"sensor.{g}_nrg_0": z(int(_t.time() * 1000)),
              f"sensor.{g}_nrg_11": z(round(p_auto), "W"),
              f"sensor.{g}_eto": z(round(self.eto, 3), "kWh"),
              f"binary_sensor.{g}_car_0": z("on"),
