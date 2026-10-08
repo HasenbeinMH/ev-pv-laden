@@ -59,6 +59,10 @@ class PVPrognose:
         self._zuletzt_verbrauch = NIE
 
     @property
+    def _modelle(self) -> tuple[str, ...]:
+        return pvdaten.WETTERMODELLE.get(self.konfig.wettermodell, ("best_match",))
+
+    @property
     def aktiv(self) -> bool:
         return bool(self.flaechen)
 
@@ -87,6 +91,7 @@ class PVPrognose:
         tz = ZoneInfo(ha.zeitzone)
         jetzt = time.monotonic()
         alt = (not self.modell.trainiert or not self.modell.trainiert_am or
+               self.modell.wettermodell != self.konfig.wettermodell or     # Option geaendert
                (datetime.now(timezone.utc) - datetime.fromisoformat(self.modell.trainiert_am)).days
                >= NEU_TRAINIEREN_TAGE)
         if alt and jetzt - self._zuletzt_training_versuch > 6 * 3600:
@@ -117,7 +122,9 @@ class PVPrognose:
                 raise RuntimeError("keine PV-Messwerte in der HA-Statistik")
             erster = min(mess).date()
             zeitraum = {"start_date": erster.isoformat(), "end_date": ende_tag.isoformat()}
-            prog = await pvdaten.gti_holen(sitzung, pvdaten.ALTE_PROGNOSE, lat, lon, self.flaechen, zeitraum)
+            # Juengster Lauf je Stunde des gewaehlten Wettermodells (previous-runs-api)
+            prog = await pvdaten.gti_holen(sitzung, pvdaten.LAEUFE, lat, lon, self.flaechen, zeitraum,
+                                           self._modelle)
             arch = await pvdaten.gti_holen(sitzung, pvdaten.ARCHIV, lat, lon, self.flaechen, zeitraum)
             neu = await asyncio.to_thread(pm.trainieren, mess, prog, arch, self.flaechen, lat, lon, tz)
             # Bedienhandlung "gereinigt" ueber das Neutraining hinweg erhalten
@@ -126,12 +133,14 @@ class PVPrognose:
                     not neu.sauberkeit_stand or neu.sauberkeit_stand < self.modell.gereinigt_am):
                 neu.sauberkeit, neu.sauberkeit_stand = self.modell.sauberkeit, self.modell.sauberkeit_stand
             neu.trainiert_am = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            neu.wettermodell = self.konfig.wettermodell
             neu.kennzahlen["tage"] = len({t.date() for t in mess})
             self.modell = neu
             self._sichern()
             self.fehler = None
             self._zuletzt_prognose = NIE   # sofort neu rechnen
-            text = (f"PV-Modell trainiert: {neu.kennzahlen['tage']} Tage, {neu.kennzahlen['felder']} "
+            text = (f"PV-Modell trainiert ({pvdaten.WETTERMODELL_TEXT.get(neu.wettermodell, neu.wettermodell)}): "
+                    f"{neu.kennzahlen['tage']} Tage, {neu.kennzahlen['felder']} "
                     f"Kennfeld-Felder, Schmutzverlust im Mittel {neu.kennzahlen['verlust_schmutz_prozent']} %")
             log.info(text)
             db.ereignis("info", "pvmodell", text)
@@ -180,7 +189,7 @@ class PVPrognose:
     async def prognose_aktualisieren(self, ha, sitzung, tz) -> None:
         lat, lon = ha.standort
         einstrahlung = await pvdaten.gti_holen(sitzung, pvdaten.PROGNOSE, lat, lon, self.flaechen,
-                                               {"past_days": 1, "forecast_days": PROGNOSE_TAGE})
+                                               {"past_days": 1, "forecast_days": PROGNOSE_TAGE}, self._modelle)
         stunden = sorted(einstrahlung.items())
         werte = self.modell.prognose(stunden, self.flaechen, lat, lon, tz)
         try:
@@ -245,6 +254,7 @@ class PVPrognose:
         return {
             "aktiv": self.aktiv, "zustand": self.zustand, "fehler": self.fehler,
             "training_laeuft": self.training_laeuft, "trainiert_am": m.trainiert_am,
+            "wettermodell": pvdaten.WETTERMODELL_TEXT.get(m.wettermodell, m.wettermodell),
             "kennzahlen": m.kennzahlen, "flaechen": [f.__dict__ for f in self.flaechen],
             "sauberkeit": m.sauberkeit, "sauberkeit_stand": m.sauberkeit_stand,
             "sauberkeit_mittel": mittel, "verlust_prozent": m.verlust_prozent(),

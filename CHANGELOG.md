@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.16.0] - 2026-10-08
+
+Besseres Wettermodell für die PV-Prognose.
+
+- **Neue Option `wettermodell`**, Standard **Mittel aus ECMWF und ICON**. Bisher kam die Einstrahlung aus Open-Meteo „best_match“ – für diesen Standort das niederländische KNMI-Modell, im Vergleich das schlechteste. Auswertung über 259 Tage 2026, die das Modell nie gesehen hat: Tagesfehler **1,62 statt 2,64 kWh** (etwa 39 % genauer); mit der Prognose vom Vortag 2,0 statt 3,1 kWh
+- Prognose und Training nutzen dasselbe Wettermodell. Nach dem Update (und bei jeder Änderung der Option) **trainiert das Modell einmal neu** – das dauert ein paar Minuten
+- Weitere Werte: `best_match` (wie bisher), `ecmwf`, `icon`
+- Reiter Prognose: die Kachel „Modell“ zeigt das Wettermodell
+- Details und alle verglichenen Modelle: `docs/PV_Modell.md`, Abschnitt „Wettermodell“
+
 ## [0.15.4] - 2026-10-08
 
 - **Lebenszeichen der Wallbox korrigiert:** Bisher diente die „Zeit seit Boot“ als Lebenszeichen – marq24 liefert sie aber in Stunden, sie ändert sich also nur stündlich. Im Leerlauf stand die Wallbox deshalb auf rot und ihre Werte (Ladeleistung, Fahrzeugstatus …) galten als veraltet; der Treiber hätte nicht gestartet. Jetzt zählen die Spannungen L1–L3 und N (ändern sich alle paar Sekunden)

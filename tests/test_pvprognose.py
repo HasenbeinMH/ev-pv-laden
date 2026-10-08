@@ -44,7 +44,7 @@ def umgebung(tmp_path, monkeypatch):
             return 1.0 - 0.3 * ((t - datetime(2024, 1, 1, tzinfo=timezone.utc)).days % 200) / 200
         return {t: pm.phys_kwh(v, fl) * 0.85 * schmutz(t) for t, v in g.items()}
 
-    async def gti_holen(sitzung, url, lat, lon, flaechen, zeitraum):
+    async def gti_holen(sitzung, url, lat, lon, flaechen, zeitraum, modelle=()):
         if "start_date" in zeitraum:
             s = datetime.fromisoformat(zeitraum["start_date"]).replace(tzinfo=timezone.utc)
             e = datetime.fromisoformat(zeitraum["end_date"]).replace(tzinfo=timezone.utc) + timedelta(days=1)
@@ -87,3 +87,40 @@ def test_ohne_flaechen_inaktiv(umgebung):
     pv = PVPrognose(Konfig(goe_seriennummer="1"), Prognose())
     asyncio.run(pv.laufen(HA()))
     assert pv.zustand == "keine Dachflaechen konfiguriert"
+
+
+def test_wettermodell_wechsel_trainiert_neu(umgebung):
+    ziel = Prognose()
+    pv = PVPrognose(K, ziel)
+    asyncio.run(pv._schritt(HA(), None))
+    assert pv.modell.wettermodell == "ecmwf_icon"           # Standard der Option
+    from dataclasses import replace
+    pv.konfig = replace(K, wettermodell="icon")
+    pv._zuletzt_training_versuch = float("-inf")
+    asyncio.run(pv._schritt(HA(), None))
+    assert pv.modell.wettermodell == "icon"
+
+
+def test_mehrere_modelle_werden_gemittelt(monkeypatch):
+    import pvdaten as pd
+
+    class Antwort:
+        def __init__(self, wert):
+            self.status, self.wert = 200, wert
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def json(self, content_type=None):
+            return {"hourly": {"time": ["2026-10-08T12:00"], "global_tilted_irradiance": [self.wert]}}
+
+    class Sitzung:
+        def get(self, url, params, timeout):
+            return Antwort(400.0 if params.get("models") == "ecmwf_ifs025" else 600.0)
+
+    fl = pd.flaechen_aus_konfig([{"name": "sued", "neigung": 30, "azimut": 180, "kwp": 5}])
+    werte = asyncio.run(pd.gti_holen(Sitzung(), pd.PROGNOSE, 51.0, 7.0, fl, {}, ("ecmwf_ifs025", "icon_seamless")))
+    assert list(werte.values()) == [{"sued": 500.0}]

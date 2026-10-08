@@ -58,6 +58,29 @@ Zerlegung mit nachträglich **gemessener** Einstrahlung (Open-Meteo-Archiv, ohne
 und machte die Tagesprognose schlechter (2,77 → 3,04 kWh). Deshalb dient sie als Anzeige und
 Reinigungshinweis; nur nach einer gemeldeten Reinigung wirkt sie auf die Prognose.
 
+## Wettermodell
+
+Bis 0.15.x kam die Einstrahlung aus Open-Meteo „best_match“ – für diesen Standort das
+niederländische Modell KNMI Harmonie. Auswertung 08.10.2026 (`dev/modell/wettermodelle.py`,
+Daten mit `wettermodelle_laden.py`): Kennfeld je Wettermodell trainiert mit 2024–2025, getestet
+auf 259 Tagen 2026 (nie gesehen), alle Modelle auf denselben Tagen.
+
+| Wettermodell | Fehler je Tag (Prognose vom Vortag) | Fehler je Tag (jüngster Lauf, wie im Betrieb) |
+|---|---|---|
+| **Mittel ECMWF + ICON** | **2,01 kWh** (13 % an Tagen > 3 kWh) | **1,62 kWh** |
+| ICON (DWD) | 2,41 kWh | 1,99 kWh |
+| ECMWF | 2,55 kWh | 2,30 kWh |
+| best_match (= KNMI) | 3,07 kWh (20 %) | 2,64 kWh |
+
+Weitere Modelle (Prognose vom Vortag): Météo-France 2,47 · MET Norway 2,57 · GFS 3,00 ·
+UK Met Office 3,03 kWh; Mittel ECMWF + ICON + Météo-France 1,98 kWh (kaum besser als zwei).
+Die Fehler der Modelle gleichen sich im Mittel teilweise aus.
+
+Seit 0.16.0: Option `wettermodell` (Standard `ecmwf_icon` = Mittel ECMWF + ICON; außerdem
+`best_match`, `ecmwf`, `icon`). Prognose und Training nutzen dasselbe Wettermodell; das
+Training nimmt den jüngsten Lauf je Stunde aus der previous-runs-api (ECMWF ab ~02/2024).
+Ändert sich die Option, trainiert das Modell neu.
+
 ## Morgentau
 
 Das Kennfeld kennt den Morgentau nur als Mittelwert. Nach klaren, feuchten, windstillen

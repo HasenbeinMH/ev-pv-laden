@@ -107,6 +107,7 @@ class Modell:
     trainiert_am: str | None = None
     kennzahlen: dict = field(default_factory=dict)
     sauberkeit_wochen: dict = field(default_factory=dict)   # Woche -> Wert (Verlauf)
+    wettermodell: str = "best_match"     # mit diesem Wettermodell trainiert (Option wettermodell)
 
     def als_dict(self) -> dict:
         return asdict(self)

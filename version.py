@@ -8,9 +8,20 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.15.4"
+VERSION = "0.16.0"
 
 CHANGELOG = [
+    {
+        "version": "0.16.0",
+        "datum": "2026-10-08",
+        "titel": "Besseres Wettermodell fuer die PV-Prognose",
+        "aenderungen": [
+            "Neue Option wettermodell: Standard Mittel aus ECMWF und ICON statt best_match (KNMI) - Auswertung 259 Tage 2026: Tagesfehler 1,62 statt 2,64 kWh (~39 % genauer)",
+            "Training mit dem juengsten Lauf je Stunde des gewaehlten Wettermodells (previous-runs-api); bei Wechsel der Option trainiert das Modell neu",
+            "Reiter Prognose: Kachel Modell zeigt das Wettermodell",
+            "dev/modell/wettermodelle*.py: Vergleich der Wettermodelle",
+        ],
+    },
     {
         "version": "0.15.4",
         "datum": "2026-10-08",

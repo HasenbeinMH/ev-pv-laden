@@ -4,8 +4,10 @@ Daten fuer das PV-Modell: Open-Meteo (Einstrahlung) und HA-Langzeitstatistik (Me
 
 Open-Meteo (kostenlos, ohne Schluessel, nur nicht-kommerziell):
   PROGNOSE       api.open-meteo.com/v1/forecast              – aktuelle Prognose
-  ALTE_PROGNOSE  historical-forecast-api.open-meteo.com/...   – archivierte Prognosen (Training)
+  LAEUFE         previous-runs-api.open-meteo.com/...         – fruehere Laeufe (Training, je Modell)
+  ALTE_PROGNOSE  historical-forecast-api.open-meteo.com/...   – archivierte Prognosen (bis 0.15.x)
   ARCHIV         archive-api.open-meteo.com/v1/archive        – nachtraeglich gemessene Werte
+Wettermodell (Option wettermodell): Standard Mittel aus ECMWF und ICON (WETTERMODELLE).
 Je Dachflaeche eine Abfrage (tilt/azimuth). Strahlung zum Zeitpunkt T = Mittel ueber
 [T-1h, T] -> wird hier auf den Stundenbeginn T-1h gelegt (wie die HA-Statistik).
 
@@ -26,6 +28,17 @@ log = logging.getLogger("pvdaten")
 PROGNOSE = "https://api.open-meteo.com/v1/forecast"
 ALTE_PROGNOSE = "https://historical-forecast-api.open-meteo.com/v1/forecast"
 ARCHIV = "https://archive-api.open-meteo.com/v1/archive"
+# Fruehere Laeufe je Wettermodell (ab ~02/2024 fuer ECMWF) – Training: juengster Lauf je Stunde
+LAEUFE = "https://previous-runs-api.open-meteo.com/v1/forecast"
+# Option wettermodell -> Open-Meteo-Modelle; mehrere werden je Stunde und Flaeche gemittelt
+WETTERMODELLE = {
+    "ecmwf_icon": ("ecmwf_ifs025", "icon_seamless"),
+    "best_match": ("best_match",),
+    "ecmwf": ("ecmwf_ifs025",),
+    "icon": ("icon_seamless",),
+}
+WETTERMODELL_TEXT = {"ecmwf_icon": "ECMWF + ICON", "best_match": "best_match",
+                     "ecmwf": "ECMWF", "icon": "ICON (DWD)"}
 HA_ABSCHNITT_TAGE = 60          # Statistik in Abschnitten abfragen (Antwortgroesse)
 HA_TIMEOUT_S = 60
 
@@ -48,20 +61,30 @@ def gti_eintragen(antwort: dict, flaeche: str, ziel: dict) -> None:
 
 
 async def gti_holen(sitzung: aiohttp.ClientSession, url: str, lat: float, lon: float,
-                    flaechen: list[pm.Flaeche], zeitraum: dict) -> dict[datetime, dict]:
-    """zeitraum: {"start_date": ..., "end_date": ...} oder {"past_days": 1, "forecast_days": 3}."""
-    ziel: dict[datetime, dict] = {}
-    for f in flaechen:
-        params = {"latitude": round(lat, 2), "longitude": round(lon, 2), "timezone": "UTC",
-                  "hourly": "global_tilted_irradiance", "tilt": f.neigung, "azimuth": f.om_azimut,
-                  **zeitraum}
-        async with sitzung.get(url, params=params, timeout=aiohttp.ClientTimeout(total=60)) as r:
-            daten = await r.json(content_type=None)
-            if r.status != 200 or daten.get("error"):
-                raise RuntimeError(f"Open-Meteo {r.status}: {daten.get('reason', daten)}")
-        gti_eintragen(daten, f.name, ziel)
-    # nur Stunden, fuer die alle Flaechen einen Wert haben
-    return {t: g for t, g in ziel.items() if len(g) == len(flaechen)}
+                    flaechen: list[pm.Flaeche], zeitraum: dict,
+                    modelle: tuple[str, ...] = ()) -> dict[datetime, dict]:
+    """zeitraum: {"start_date": ..., "end_date": ...} oder {"past_days": 1, "forecast_days": 3}.
+    modelle: Open-Meteo-Wettermodelle; mehrere werden je Stunde und Flaeche gemittelt
+    (nur Stunden, die alle Modelle liefern). Leer = Voreinstellung des Dienstes."""
+    je_modell = []
+    for modell in (modelle or (None,)):
+        ziel: dict[datetime, dict] = {}
+        for f in flaechen:
+            params = {"latitude": round(lat, 2), "longitude": round(lon, 2), "timezone": "UTC",
+                      "hourly": "global_tilted_irradiance", "tilt": f.neigung, "azimuth": f.om_azimut,
+                      **zeitraum, **({"models": modell} if modell else {})}
+            async with sitzung.get(url, params=params, timeout=aiohttp.ClientTimeout(total=120)) as r:
+                daten = await r.json(content_type=None)
+                if r.status != 200 or daten.get("error"):
+                    raise RuntimeError(f"Open-Meteo {r.status}: {daten.get('reason', daten)}")
+            gti_eintragen(daten, f.name, ziel)
+        # nur Stunden, fuer die alle Flaechen einen Wert haben
+        je_modell.append({t: g for t, g in ziel.items() if len(g) == len(flaechen)})
+    if len(je_modell) == 1:
+        return je_modell[0]
+    gemeinsam = set.intersection(*(set(m) for m in je_modell))
+    return {t: {f.name: sum(m[t][f.name] for m in je_modell) / len(je_modell) for f in flaechen}
+            for t in sorted(gemeinsam)}
 
 
 async def wetter_holen(sitzung: aiohttp.ClientSession, lat: float, lon: float, zeitraum: dict) -> dict:

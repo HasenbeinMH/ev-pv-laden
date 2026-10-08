@@ -66,6 +66,9 @@ Umlaute in Bezeichnern und Kommentaren als ae/oe/ue, in Texten der Oberfläche e
 
 ## Stolperfallen
 
+- Lokales Windows-Python lehnt die Let's-Encrypt-Kette „YE1/YE2“ von Open-Meteo ab
+  („certificate has expired“) – im Add-on-Container geht es. Lokal mit
+  `ssl.create_default_context(cafile=certifi.where())` testen oder `curl` nehmen.
 - `time.monotonic()` zählt ab Systemstart: Zeitgeber nie mit `0.0` vorbelegen, sondern
   mit „noch nie“ (`float("-inf")`).
 - CSS-Grid: `auto` ist kein gültiger Bereichsname. Elemente mit `display:flex` brauchen

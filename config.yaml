@@ -5,7 +5,7 @@
 # Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
 # Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
 name: EV PV-Laden
-version: "0.15.4"
+version: "0.16.0"
 slug: ev_pv_laden
 description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
 url: "https://github.com/HasenbeinMH/ev-pv-laden"
@@ -86,6 +86,9 @@ options:
   sensor_pv_dc_leistung: sensor.se_modbus_daten_dc_power
   sensor_akku_geladen: sensor.se_modbus_daten_battery1_charged
   sensor_akku_entladen: sensor.se_modbus_daten_battery1_discharged
+  # Wettermodell der PV-Prognose: ecmwf_icon (Mittel ECMWF + ICON, empfohlen), best_match,
+  # ecmwf oder icon. Nach einer Aenderung trainiert das Modell neu.
+  wettermodell: ecmwf_icon
 schema:
   trockenlauf: bool
   log_level: list(debug|info|warning|error)
@@ -123,3 +126,4 @@ schema:
   sensor_pv_dc_leistung: match(^(sensor\.[a-z0-9_]+)?$)
   sensor_akku_geladen: match(^(sensor\.[a-z0-9_]+)?$)
   sensor_akku_entladen: match(^(sensor\.[a-z0-9_]+)?$)
+  wettermodell: list(ecmwf_icon|best_match|ecmwf|icon)?

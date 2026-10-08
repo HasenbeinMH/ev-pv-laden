@@ -73,6 +73,9 @@ class Konfig:
     sensor_pv_dc_leistung: str = "sensor.se_modbus_daten_dc_power"
     sensor_akku_geladen: str = "sensor.se_modbus_daten_battery1_charged"
     sensor_akku_entladen: str = "sensor.se_modbus_daten_battery1_discharged"
+    # Wettermodell der Einstrahlungsprognose (Open-Meteo), siehe pvdaten.WETTERMODELLE.
+    # Auswertung 2026: Mittel ECMWF + ICON ~39 % genauer als best_match (docs/PV_Modell.md)
+    wettermodell: str = "ecmwf_icon"
 
     @property
     def strom_1ph_max_a(self) -> int:
@@ -120,6 +123,8 @@ def pruefen(k: Konfig) -> list[str]:
         f.append(f"ev_max_leistung_kw={k.ev_max_leistung_kw} unplausibel")
     if not 0.5 <= k.ladewirkungsgrad <= 1:
         f.append(f"ladewirkungsgrad={k.ladewirkungsgrad} ausserhalb 0,5..1")
+    if k.wettermodell not in ("ecmwf_icon", "best_match", "ecmwf", "icon"):
+        f.append(f"wettermodell ungueltig: '{k.wettermodell}'")
     if k.log_level not in ("debug", "info", "warning", "error"):
         f.append(f"log_level ungueltig: '{k.log_level}'")
     if k.ev_tracker_url and not k.ev_tracker_url.startswith(("http://", "https://")):

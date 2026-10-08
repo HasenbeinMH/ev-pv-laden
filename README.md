@@ -63,6 +63,7 @@ gingen, und übergibt jede Ladung an den [EV Tracker](https://github.com/Hasenbe
    - **Stromgrenzen** passend zur eigenen Zuleitung und zum Auto
    - **Auto:** Akkukapazität, Ladewirkungsgrad, höchste AC-Ladeleistung
    - **Dachflächen** (`pv_flaechen`: Neigung, Azimut, kWp) für die PV-Prognose
+   - **Wettermodell** (`wettermodell`, Standard `ecmwf_icon` = Mittel aus ECMWF und ICON) – meist passt der Standard
    - optional **EV Tracker**: Adresse, Token, Fahrzeug
 3. Starten und die Oberfläche über die Seitenleiste öffnen (sichtbar für alle HA-Benutzer).
    Unter *Diagnose* müssen alle Messwerte „gültig“ sein.

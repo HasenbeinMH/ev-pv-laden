@@ -777,7 +777,8 @@ async function pvLaden() {
     : p.trainiert_am ? '<span class="ok">trainiert</span>' : esc(p.zustand || "–");
   const k = p.kennzahlen || {};
   $("pv-modell-kennzahlen").textContent = p.trainiert_am
-    ? `${new Date(p.trainiert_am).toLocaleDateString("de-DE")} · ${k.tage || "?"} Tage · ${k.felder || "?"} Felder` + (p.fehler ? " · " + p.fehler : "")
+    ? `${p.wettermodell ? p.wettermodell + " · " : ""}${new Date(p.trainiert_am).toLocaleDateString("de-DE")} · ${k.tage || "?"} Tage · ${k.felder || "?"} Felder`
+      + (p.fehler ? " · " + p.fehler : "")
     : (p.fehler || "");
   // Dachflaechen aus den Add-on-Optionen (pv_flaechen)
   const richtung = a => ["N", "NO", "O", "SO", "S", "SW", "W", "NW"][Math.round(((a % 360) + 360) % 360 / 45) % 8];
