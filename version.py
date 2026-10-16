@@ -8,9 +8,19 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.16.0"
+VERSION = "0.16.1"
 
 CHANGELOG = [
+    {
+        "version": "0.16.1",
+        "datum": "2026-10-16",
+        "titel": "PV-Prognose: Messung ueberwacht, Morgentau nachjustiert",
+        "aenderungen": [
+            "Warnung, wenn die PV-Messung in der HA-Statistik aelter als 2 Tage ist (Protokoll, Ereignisse, Kachel Modell: 'Messung fehlt') - Anlass: Recorder-Ausschluss nahm die DC-Leistung vom 07.10. bis 16.10. aus der Statistik",
+            "Morgentau-Faktor 0,9 statt 0,7 - mit ECMWF + ICON verschlechterte 0,7 den Tagesfehler im Winterhalbjahr (1,37 statt 1,24 kWh)",
+            "Nachtwetter fuer den Tau aus denselben Wettermodellen wie die Einstrahlung statt best_match (Tau-Klasse wechselte fast stuendlich)",
+        ],
+    },
     {
         "version": "0.16.0",
         "datum": "2026-10-08",

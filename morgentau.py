@@ -5,7 +5,9 @@ Morgentau-Korrektur der eigenen PV-Prognose.
 Nach klaren, feuchten, windstillen Naechten liegt Tau auf den Modulen; im Winterhalbjahr
 (Okt–Maerz) verdunstet er langsam und die ersten Sonnenstunden bringen deutlich weniger.
 Das Kennfeld kennt diesen Effekt nur als Mittelwert. Auswertung 2024–2026
-(dev/modell/tau.py): nach Tau-Naechten im Winterhalbjahr am Morgen ~0,7–0,8 der Prognose.
+(dev/modell/tau.py): nach Tau-Naechten im Winterhalbjahr am Morgen ~0,7–0,8 der Prognose;
+mit dem Kennfeld aus ECMWF + ICON ist ein Teil davon schon im Mittel enthalten -> Faktor 0,9.
+Nachtwetter aus denselben Wettermodellen wie die Einstrahlung (Option wettermodell).
 
 Merkmale der Nacht aus der Open-Meteo-Prognose (9 h vor Sonnenaufgang):
   Spreizung = Temperatur - Taupunkt (Minimum der letzten 3 h vor Sonnenaufgang)
@@ -17,7 +19,9 @@ from datetime import date, datetime, timedelta, timezone
 
 import pvmodell as pm
 
-TAU_FAKTOR = 0.7            # Startwert (07.10.2026), am 18.10. mit echten Herbstmorgen nachjustieren
+# 0.9 seit 0.16.1: mit dem Kennfeld aus ECMWF + ICON (Test Winterhalbjahr 2026, 92 Tage) war
+# der Morgenfehler bei 0.9 am kleinsten; 0.7 verschlechterte den Tagesfehler (1,24 -> 1,37 kWh).
+TAU_FAKTOR = 0.9
 MORGEN_STUNDEN = 4          # so viele Sonnenstunden ab Sonnenaufgang gelten als "Morgen"
 NACHT_STUNDEN = 9
 WETTER_GROESSEN = "temperature_2m,dew_point_2m,cloud_cover,wind_speed_10m,precipitation"

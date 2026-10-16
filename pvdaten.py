@@ -87,15 +87,32 @@ async def gti_holen(sitzung: aiohttp.ClientSession, url: str, lat: float, lon: f
             for t in sorted(gemeinsam)}
 
 
-async def wetter_holen(sitzung: aiohttp.ClientSession, lat: float, lon: float, zeitraum: dict) -> dict:
-    """Wetter der Naechte fuer die Morgentau-Korrektur (Open-Meteo-Prognose, UTC)."""
-    params = {"latitude": round(lat, 2), "longitude": round(lon, 2), "timezone": "UTC",
-              "hourly": morgentau.WETTER_GROESSEN, **zeitraum}
-    async with sitzung.get(PROGNOSE, params=params, timeout=aiohttp.ClientTimeout(total=60)) as r:
-        daten = await r.json(content_type=None)
-        if r.status != 200 or daten.get("error"):
-            raise RuntimeError(f"Open-Meteo {r.status}: {daten.get('reason', daten)}")
-    return morgentau.wetter_eintragen(daten)
+async def wetter_holen(sitzung: aiohttp.ClientSession, lat: float, lon: float, zeitraum: dict,
+                       modelle: tuple[str, ...] = ()) -> dict:
+    """Wetter der Naechte fuer die Morgentau-Korrektur (Open-Meteo-Prognose, UTC).
+    modelle wie bei gti_holen: mehrere werden je Stunde und Groesse gemittelt. Seit 0.16.1
+    dieselben Modelle wie die Einstrahlung – best_match (KNMI) sprang von Abruf zu Abruf
+    (Wolken 64 % <-> 86 %), die Tau-Klasse wechselte dadurch fast stuendlich."""
+    je_modell = []
+    for modell in (modelle or (None,)):
+        params = {"latitude": round(lat, 2), "longitude": round(lon, 2), "timezone": "UTC",
+                  "hourly": morgentau.WETTER_GROESSEN, **zeitraum, **({"models": modell} if modell else {})}
+        async with sitzung.get(PROGNOSE, params=params, timeout=aiohttp.ClientTimeout(total=60)) as r:
+            daten = await r.json(content_type=None)
+            if r.status != 200 or daten.get("error"):
+                raise RuntimeError(f"Open-Meteo {r.status}: {daten.get('reason', daten)}")
+        je_modell.append(morgentau.wetter_eintragen(daten))
+    if len(je_modell) == 1:
+        return je_modell[0]
+    gemeinsam = set.intersection(*(set(m) for m in je_modell))
+    aus = {}
+    for t in sorted(gemeinsam):
+        werte = {}
+        for groesse in je_modell[0][t]:
+            vorhanden = [m[t].get(groesse) for m in je_modell if m[t].get(groesse) is not None]
+            werte[groesse] = sum(vorhanden) / len(vorhanden) if vorhanden else None
+        aus[t] = werte
+    return aus
 
 
 # ── HA-Statistik ───────────────────────────────────────────────────────────────────

@@ -99,10 +99,40 @@ wird die Nacht eingestuft:
 | trocken | sonst |
 
 Bei „Tau wahrscheinlich“ und „Tau möglich“ werden im Winterhalbjahr die ersten 4
-Sonnenstunden mit dem Faktor 0,7 gerechnet (Startwert, am 18.10.2026 mit echten
-Herbstmorgen nachjustieren). Je Tag werden Klasse, Merkmale und Morgenprognose ohne/mit
+Sonnenstunden mit dem Faktor **0,9** gerechnet (0.14.0–0.16.0: 0,7). Je Tag werden Klasse, Merkmale und Morgenprognose ohne/mit
 Korrektur im Protokoll, in den Ereignissen und in der Datenbank (`morgentau_protokoll`,
 120 Tage) festgehalten. Ohne Wetterdaten bleibt die Prognose unkorrigiert.
+
+**Nachjustiert 16.10.2026 (0.16.1).** Der Faktor 0,7 stammte aus dem Kennfeld mit best_match.
+Mit dem Kennfeld aus ECMWF + ICON (Training 2024–2025, Test 2026, Winterhalbjahr 92 Tage):
+
+| Faktor | Fehler Morgen (kWh/Tag) | Fehler Tag (kWh/Tag) |
+|---|---|---|
+| 1,0 (ohne) | 0,73 | 1,24 |
+| **0,9** | **0,71** | 1,27 |
+| 0,8 | 0,71 | 1,32 |
+| 0,7 | 0,74 | 1,37 |
+
+Der Morgen nach Tau-Nächten liegt zwar bei ~0,75 der Prognose, nach trockenen Nächten aber
+auch nur bei ~0,93 – einen Teil des Effekts kennt das neue Kennfeld schon. Den Tagesfehler
+verbessert die Korrektur nicht; sie bleibt mit 0,9, weil sie die Morgenstunden (für das
+Laden am Vormittag) etwas trifft. Live 14./15.10.: einmal zu stark (Morgen 3,1 statt
+korrigiert 1,9 kWh), einmal genau (2,1 statt 2,1 kWh).
+
+Das Nachtwetter kommt seit 0.16.1 aus denselben Wettermodellen wie die Einstrahlung (Option
+`wettermodell`, Standard Mittel ECMWF + ICON). Vorher best_match (KNMI): Die Werte sprangen
+von Abruf zu Abruf (Wolken 64 % ↔ 86 %), die Klasse wechselte fast stündlich zwischen
+„trocken“ und „Tau möglich“. Die Grenzwerte der Klassen stammen noch aus der Auswertung mit
+best_match-Wetter – mit einem Winter Protokoll erneut prüfen.
+
+## Messung überwacht
+
+Seit 0.16.1 prüft das Add-on beim Training und bei der täglichen Sauberkeit, ob die
+PV-Messung in der HA-Statistik aktuell ist (jüngste Stunde höchstens 2 Tage vor dem Ende des
+abgefragten Zeitraums). Sonst: Warnung im Protokoll und in den Ereignissen, Kachel „Modell“
+zeigt „Messung fehlt“. Anlass: Vom 07.10. bis 16.10.2026 hatte ein Recorder-Ausschluss
+(`sensor.se_modbus_daten_*`) die DC-Leistung aus der Statistik genommen – das Modell lernte
+nichts nach, die Sauberkeit blieb stehen, ohne dass es auffiel.
 
 ## 7-Tage-Vorschau
 

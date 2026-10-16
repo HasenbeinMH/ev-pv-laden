@@ -34,6 +34,9 @@ TRAINING_TAGE = 3 * 365
 NEU_TRAINIEREN_TAGE = 7
 PROGNOSE_S = 3600
 SAUBERKEIT_S = 24 * 3600
+# Juengste PV-Messung in der HA-Statistik aelter als das -> Warnung (z. B. Sensor vom Recorder
+# ausgeschlossen: ohne Statistik lernt das Modell nichts Neues und die Sauberkeit bleibt stehen)
+MESSUNG_MAX_ALTER = timedelta(days=2)
 # Startwert der Zeitgeber: "noch nie". Nicht 0.0 – time.monotonic() zaehlt ab Systemstart,
 # kurz nach einem Neustart des Hosts waere sonst alles noch "gerade erst erledigt".
 NIE = float("-inf")
@@ -57,6 +60,8 @@ class PVPrognose:
         self.haus_profil: dict[int, float] = {}
         self.akku_bedarf: float | None = None
         self._zuletzt_verbrauch = NIE
+        self.messung_bis: datetime | None = None     # juengste Stunde mit PV-Messwert (UTC)
+        self.messung_warnung: str | None = None
 
     @property
     def _modelle(self) -> tuple[str, ...]:
@@ -118,6 +123,7 @@ class PVPrognose:
             ende = datetime(ende_tag.year, ende_tag.month, ende_tag.day, tzinfo=timezone.utc)
             log.info("PV-Modell: Training mit Daten ab %s", start.date())
             mess = await pvdaten.pv_messung(ha, self.konfig, start, ende)
+            self._messung_pruefen(mess, ende)
             if not mess:
                 raise RuntimeError("keine PV-Messwerte in der HA-Statistik")
             erster = min(mess).date()
@@ -163,6 +169,7 @@ class PVPrognose:
         if start >= ende:
             return
         mess = await pvdaten.pv_messung(ha, self.konfig, start, ende)
+        self._messung_pruefen(mess, ende)
         arch = await pvdaten.gti_holen(sitzung, pvdaten.ARCHIV, lat, lon, self.flaechen,
                                        {"start_date": start.date().isoformat(), "end_date": ende_tag.isoformat()})
         wert, sonne = pm.sauberkeit_schaetzen(self.modell, mess, arch, self.flaechen, lat, lon, tz)
@@ -175,6 +182,27 @@ class PVPrognose:
         self.modell.sauberkeit_wochen[woche] = wert
         self._sichern()
         log.info("Sauberkeit %.0f %% (Mittel %.0f %%)", wert * 100, self.modell.sauberkeit_mittel * 100)
+
+    def _messung_pruefen(self, mess: dict[datetime, float], ende: datetime) -> None:
+        """Sind die PV-Messwerte in der HA-Statistik aktuell? ende = Ende des abgefragten
+        Zeitraums (Training: gestern 0 Uhr, Sauberkeit: heute 0 Uhr UTC). Meldung nur beim Wechsel."""
+        if mess:
+            self.messung_bis = max(self.messung_bis or min(mess), max(mess))
+        if self.messung_bis is not None and ende - self.messung_bis <= MESSUNG_MAX_ALTER:
+            if self.messung_warnung:
+                log.info("PV-Messung wieder aktuell (bis %s)", self.messung_bis.isoformat(timespec="minutes"))
+                db.ereignis("info", "pvmodell", "PV-Messwerte in der HA-Statistik wieder aktuell")
+            self.messung_warnung = None
+            return
+        sensoren = ", ".join(s for s in pvdaten.statistik_ids(self.konfig).values() if s)
+        seit = (f"seit {self.messung_bis.astimezone(timezone.utc):%d.%m. %H:%M} UTC"
+                if self.messung_bis else "im Zeitraum")
+        text = (f"Keine PV-Messwerte in der HA-Statistik {seit} – wird {sensoren} vom Recorder "
+                f"aufgezeichnet? Ohne Messung lernt das Modell nicht nach und die Sauberkeit bleibt stehen")
+        if text != self.messung_warnung:
+            log.warning(text)
+            db.ereignis("warnung", "pvmodell", text)
+        self.messung_warnung = text
 
     def gereinigt(self, heute: date) -> None:
         """Bedienhandlung: Anlage wurde gereinigt."""
@@ -193,7 +221,8 @@ class PVPrognose:
         stunden = sorted(einstrahlung.items())
         werte = self.modell.prognose(stunden, self.flaechen, lat, lon, tz)
         try:
-            wetter = await pvdaten.wetter_holen(sitzung, lat, lon, {"past_days": 2, "forecast_days": PROGNOSE_TAGE})
+            wetter = await pvdaten.wetter_holen(sitzung, lat, lon, {"past_days": 2, "forecast_days": PROGNOSE_TAGE},
+                                                self._modelle)
             werte, tage = morgentau.korrigieren(werte, wetter, lat, lon, tz)
             self._tau_merken(tage, datetime.now(tz).date())
         except Exception as e:                  # ohne Wetter: Prognose ohne Tau-Korrektur
@@ -261,4 +290,6 @@ class PVPrognose:
             "zuschlag": round(m.zuschlag(heute), 3), "gereinigt_am": m.gereinigt_am,
             "reinigung_empfohlen": m.sauberkeit is not None and m.sauberkeit < mittel - 0.05,
             "sauberkeit_wochen": m.sauberkeit_wochen,
+            "messung_bis": self.messung_bis.isoformat() if self.messung_bis else None,
+            "messung_warnung": self.messung_warnung,
         }

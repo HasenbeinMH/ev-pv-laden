@@ -3,6 +3,15 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.16.1] - 2026-10-16
+
+PV-Prognose: Messung überwacht, Morgentau nachjustiert.
+
+- **Warnung, wenn die PV-Messung fehlt:** Das Add-on prüft beim Training und bei der täglichen Sauberkeit, ob die Messwerte in der HA-Statistik aktuell sind. Sind sie älter als 2 Tage, steht eine Warnung im Protokoll und in den Ereignissen, und die Kachel „Modell“ (Reiter Prognose) zeigt „Messung fehlt“. Anlass: Ein Recorder-Ausschluss hatte die DC-Leistung vom 07.10. bis 16.10. aus der Statistik genommen – das Modell lernte nichts nach, ohne dass es auffiel
+- **Morgentau-Faktor 0,9 statt 0,7:** Mit dem neuen Wettermodell (ECMWF + ICON) machte 0,7 den Tagesfehler im Winterhalbjahr schlechter (1,37 statt 1,24 kWh); 0,9 trifft die Morgenstunden am besten
+- **Nachtwetter für den Tau aus ECMWF + ICON** (wie die Einstrahlung, Option `wettermodell`) statt best_match – dort sprangen die Wolken von Abruf zu Abruf, die Tau-Einstufung wechselte fast stündlich
+- Details: `docs/PV_Modell.md`, Abschnitte „Morgentau“ und „Messung überwacht“
+
 ## [0.16.0] - 2026-10-08
 
 Besseres Wettermodell für die PV-Prognose.

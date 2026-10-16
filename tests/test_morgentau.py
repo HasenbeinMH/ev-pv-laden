@@ -44,12 +44,12 @@ def test_winter_tau_schwaecht_die_ersten_vier_sonnenstunden():
     neu, tage = mt.korrigieren(tageswerte(tag), wetter_nacht(tag, 8.0, 7.5), LAT, LON, TZ)
     sonne = sonnenstunden(tag)
     werte = dict(neu)
-    assert [werte[t] for t in sonne[:4]] == [0.7] * 4
+    assert [werte[t] for t in sonne[:4]] == [mt.TAU_FAKTOR] * 4
     assert all(werte[t] == 1.0 for t in sonne[4:])
     info = tage[tag.date()]
-    assert info["klasse"] == mt.WAHRSCHEINLICH and info["faktor"] == 0.7
-    assert info["morgen_ohne_kwh"] == 4.0 and info["morgen_mit_kwh"] == 2.8
-    assert "×0,7" in mt.text(tag.date(), info)
+    assert info["klasse"] == mt.WAHRSCHEINLICH and info["faktor"] == mt.TAU_FAKTOR == 0.9
+    assert info["morgen_ohne_kwh"] == 4.0 and info["morgen_mit_kwh"] == 3.6
+    assert "×0,9" in mt.text(tag.date(), info)
 
 
 def test_trocken_und_sommer_unveraendert():

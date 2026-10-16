@@ -774,12 +774,18 @@ async function pvLaden() {
     ? `gereinigt am ${new Date(p.gereinigt_am).toLocaleDateString("de-DE")}` + (p.zuschlag > 1.001 ? ` · Prognose +${zahl((p.zuschlag - 1) * 100)} %` : "")
     : "gegenüber den saubersten Wochen";
   $("pv-modell").innerHTML = p.training_laeuft ? "Training läuft …"
+    : p.messung_warnung ? '<span class="warnung">Messung fehlt</span>'
     : p.trainiert_am ? '<span class="ok">trainiert</span>' : esc(p.zustand || "–");
   const k = p.kennzahlen || {};
-  $("pv-modell-kennzahlen").textContent = p.trainiert_am
+  const kennz = $("pv-modell-kennzahlen");
+  kennz.textContent = p.messung_warnung
+    ? (p.messung_bis ? `letzte Messung ${new Date(p.messung_bis).toLocaleString("de-DE", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"})}` : "keine Messwerte")
+      + " · Recorder prüfen"
+    : p.trainiert_am
     ? `${p.wettermodell ? p.wettermodell + " · " : ""}${new Date(p.trainiert_am).toLocaleDateString("de-DE")} · ${k.tage || "?"} Tage · ${k.felder || "?"} Felder`
       + (p.fehler ? " · " + p.fehler : "")
     : (p.fehler || "");
+  kennz.title = p.messung_warnung || "";
   // Dachflaechen aus den Add-on-Optionen (pv_flaechen)
   const richtung = a => ["N", "NO", "O", "SO", "S", "SW", "W", "NW"][Math.round(((a % 360) + 360) % 360 / 45) % 8];
   const fl = p.flaechen || [];
