@@ -1,5 +1,5 @@
 from konfig import Konfig
-from prozessabbild import Prozessabbild
+from prozessabbild import Prozessabbild, akku_gesperrt
 
 K = Konfig(goe_seriennummer="325656", max_alter_s=15,
            sensor_lebenszeichen="sensor.se_modbus_daten_m1_ac_power")
@@ -94,3 +94,44 @@ def test_verbindung_weg_macht_ungueltig():
 def test_jede_entity_nur_einmal_abonniert():
     pa = Prozessabbild(K)
     assert len(pa.entity_ids) == len(set(pa.entity_ids))
+
+
+KS = Konfig(goe_seriennummer="325656", max_alter_s=15, sensor_lebenszeichen=K.sensor_lebenszeichen,
+            akku_steuermodus="select.solaredge_storage_control_mode",
+            akku_entladegrenze="number.solaredge_storage_remote_discharge_limit")
+
+
+def sperre(modus, grenze, t=100.0):
+    pa = Prozessabbild(KS)
+    if modus is not None:
+        pa.aktualisieren(KS.akku_steuermodus, zst(modus), t)
+    if grenze is not None:
+        pa.aktualisieren(KS.akku_entladegrenze, zst(grenze, "W"), t)
+    return akku_gesperrt({n: pa.wert(n, t + 1) for n in pa.werte})
+
+
+def test_akku_sperre_aus_stellung_am_wechselrichter():
+    # Werte wie am 24.10.2026 gesehen (Automation F)
+    assert sperre("Remote Control", "0.0") is True
+    assert sperre("Maximize Self Consumption", "5000.0") is False
+    assert sperre("Maximize Self Consumption", "0.0") is False   # Grenze gilt nur in Remote Control
+    assert sperre("Remote Control", "5000.0") is False
+    assert sperre("unavailable", "0.0") is None
+    assert sperre(None, None) is None
+
+
+def test_akku_sperre_nicht_konfiguriert_und_ohne_modus():
+    pa = Prozessabbild(K)
+    assert akku_gesperrt({n: pa.wert(n) for n in pa.werte}) is None
+    assert akku_gesperrt({"akku_grenze_w": 0.0}) is True            # nur Grenze angegeben
+    assert akku_gesperrt({"akku_grenze_w": 5000.0}) is False
+
+
+def test_akku_sperre_veraltet_mit_messgeraet():
+    # Stellung aendert sich selten - gueltig, solange das Messgeraet lebt
+    pa = Prozessabbild(KS)
+    pa.aktualisieren(KS.akku_steuermodus, zst("Remote Control"), 100.0)
+    pa.aktualisieren(KS.akku_entladegrenze, zst("0.0", "W"), 100.0)
+    pa.aktualisieren(KS.sensor_lebenszeichen, zst("10", "W"), 500.0)
+    assert akku_gesperrt({n: pa.wert(n, 501.0) for n in pa.werte}) is True
+    assert akku_gesperrt({n: pa.wert(n, 600.0) for n in pa.werte}) is None   # alles veraltet

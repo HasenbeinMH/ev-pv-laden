@@ -8,9 +8,19 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.16.2"
+VERSION = "0.17.0"
 
 CHANGELOG = [
+    {
+        "version": "0.17.0",
+        "datum": "2026-10-24",
+        "titel": "Entladesperre des Hausakkus im Energiefluss",
+        "aenderungen": [
+            "Neue Optionen akku_steuermodus und akku_entladegrenze (optional): Stellung am Wechselrichter. Gesperrt = Entladegrenze <= 0 W und Steuermodus 'Remote Control' (SolarEdge)",
+            "Energiefluss: Schloss im Knoten Hausakku, Text 'gesperrt' bzw. 'laedt - gesperrt'; ebenso in der Kachel Hausakku",
+            "Nur Anzeige - das Add-on schreibt nichts auf den Wechselrichter",
+        ],
+    },
     {
         "version": "0.16.2",
         "datum": "2026-10-24",

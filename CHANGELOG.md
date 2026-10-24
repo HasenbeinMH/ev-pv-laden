@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.17.0] - 2026-10-24
+
+Entladesperre des Hausakkus im Energiefluss.
+
+- **Neue Optionen `akku_steuermodus` und `akku_entladegrenze`** (optional): die Stellung am Wechselrichter. Gesperrt heißt: Entladegrenze 0 W **und** Steuermodus „Remote Control“ (SolarEdge – nur in diesem Modus gilt die Grenze). Vorbelegt mit `select.solaredge_storage_control_mode` und `number.solaredge_storage_remote_discharge_limit`; leer lassen, wenn es keine Sperre gibt
+- **Energiefluss:** Bei Sperre ein Schloss oben rechts im Knoten Hausakku und „gesperrt“ statt „ruht“ – lädt der Akku aus PV weiter, steht da „lädt · gesperrt“. Ebenso in der Kachel Hausakku
+- Nur Anzeige: Das Add-on schreibt nichts auf den Wechselrichter, die Sperre setzt weiterhin HA (Vorlage `docs/batterie_steuerung.yaml`)
+
 ## [0.16.2] - 2026-10-24
 
 Fertig-Erkennung für „Abgeschlossen“, SoC-Sensor beim Anstecken, Ergebnisse der ersten Inbetriebnahme.

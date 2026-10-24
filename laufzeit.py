@@ -23,7 +23,7 @@ from meldungen import FertigErkennung
 from ha_client import IST_ADDON, HAClient, verbindung_aus_umgebung
 from prognose import ABFRAGE_S as PROGNOSE_S, Prognose
 from pvprognose import PVPrognose
-from prozessabbild import Prozessabbild
+from prozessabbild import Prozessabbild, akku_gesperrt
 from regelung import Regelung
 from strategie import MIN_PV, NUR_PV
 from tagesverlauf import SIGNALE as TAG_SIGNALE, Tagesverlauf, aus_historie, hausverbrauch, ladestrom
@@ -503,4 +503,6 @@ class Laufzeit:
                 "ausweich_a": self.ausweich_a, "wiederanlauf": self.wiederanlauf.zustand,
                 "aktionen": list(self.aktionen)[::-1][:30]},
             "signale": self.abbild.uebersicht() if self.abbild else [],
+            "akku_gesperrt": (akku_gesperrt({n: self.abbild.wert(n) for n in self.abbild.werte})
+                              if self.abbild else None),
         }

@@ -6,6 +6,7 @@ const ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
   zap: '<path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/>',
   plug: '<path d="M12 22v-5"/><path d="M15 8V2"/><path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"/><path d="M9 8V2"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
   "battery-charging": '<path d="m11 7-3 5h4l-3 5"/><path d="M14.856 6H16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.935"/><path d="M22 14v-4"/><path d="M5.14 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2.936"/>',
   car: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
   activity: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
@@ -113,6 +114,11 @@ function flussAufbauen() {
       <text class="name" x="${n.x + 85}" y="${n.y + 77}" text-anchor="middle" id="t-${k}">${n.name}</text>
     </g>`;
   }
+  // Hausakku: Schloss bei Entladesperre am Wechselrichter
+  const a = KNOTEN.akku;
+  h += `<g id="akku-sperre" visibility="hidden"><title>Entladung gesperrt (Wechselrichter: Remote Control, Entladegrenze 0 W)</title>
+    <svg x="${a.x + 138}" y="${a.y + 10}" width="20" height="20" viewBox="0 0 24 24" class="i"
+      style="color:var(--akku)">${ICONS.lock}</svg></g>`;
   // Auto: Aufteilung PV/Akku/Netz als Balken unter der Kachel
   h += `<g id="auto-balken"></g>`;
   h += `<circle class="mitte" cx="${MITTE.x}" cy="${MITTE.y}" r="${MITTE.r}"><title>Hausnetz</title></circle>
@@ -156,6 +162,14 @@ function aufteilen(p, netz, akku) {    // wie bilanz.py: Haus zuerst, Auto bekom
   return {pv: p - n - a, akku: a, netz: n};
 }
 
+// Gesperrt heisst nur: keine Entladung – laden aus PV geht weiter ("lädt · gesperrt")
+function akkuZustand(akku, gesperrt, laedtText = "lädt") {
+  if (akku === null) return gesperrt ? "gesperrt" : "";
+  if (akku > 30) return "entlädt";
+  if (akku < -30) return gesperrt ? "lädt · gesperrt" : laedtText;
+  return gesperrt ? "gesperrt" : "ruht";
+}
+
 function flussSetzen(w) {
   if (!$("w-haus")) return;
   const pv = w.pv_w ?? null, netz = w.netz_w ?? null, akku = w.akku_w ?? null, auto = w.auto_w ?? null;
@@ -165,7 +179,8 @@ function flussSetzen(w) {
   $("w-akku").textContent = watt(akku === null ? null : Math.abs(akku));
   const soc = w.akku_soc;
   $("t-akku").innerHTML = soc === null || soc === undefined ? "Hausakku"
-    : `<tspan class="soc" style="fill:var(${soc >= 50 ? "--ok" : soc >= 20 ? "--warnung" : "--kritisch"})">${zahl(soc)} %</tspan> · ${akku === null ? "" : akku > 30 ? "entlädt" : akku < -30 ? "lädt" : "ruht"}`;
+    : `<tspan class="soc" style="fill:var(${soc >= 50 ? "--ok" : soc >= 20 ? "--warnung" : "--kritisch"})">${zahl(soc)} %</tspan> · ${akkuZustand(akku, w.akku_gesperrt)}`;
+  $("akku-sperre").setAttribute("visibility", w.akku_gesperrt ? "visible" : "hidden");
   $("w-auto").textContent = watt(auto);
   const phasen = ["auto_i1", "auto_i2", "auto_i3"].filter(n => (w[n] ?? 0) >= 1).length;
   $("t-auto").textContent = w.auto_steckt === false ? "nicht angesteckt" : phasen ? `Auto · ${phasen}-phasig` : "Auto";
@@ -212,7 +227,7 @@ function kpiSetzen(pv, haus, akku, soc, auto, phasen, w) {
   $("kp-haus-unter").textContent = w.haus_w !== null && w.haus_w !== undefined ? "Verbrauch ohne Auto" : "Verbrauch (berechnet)";
   $("kp-akku").innerHTML = akku === null ? "–" : (akku < -30 ? "+" : akku > 30 ? "−" : "") + kwHtml(Math.abs(akku));
   $("kp-akku-unter").textContent = (soc === null || soc === undefined ? "" : zahl(soc) + " % · ")
-    + (akku === null ? "" : akku < -30 ? "wird geladen" : akku > 30 ? "entlädt" : "ruht");
+    + akkuZustand(akku, w.akku_gesperrt, "wird geladen");
   $("kp-akku-box").style.setProperty("--c", akku !== null && akku < -30 ? "var(--akku-laden)" : "var(--akku)");
   $("kp-auto").innerHTML = kwHtml(auto);
   $("kp-auto-unter").textContent = w.auto_steckt === false ? "nicht angesteckt"
@@ -431,6 +446,7 @@ async function status() {
     hausEnthaeltAuto = s.haus_enthaelt_auto !== false;
     const w = {};
     s.signale.forEach(z => { w[z.name] = z.gueltig ? z.wert : null; });
+    w.akku_gesperrt = s.akku_gesperrt;
     letzteWerte = w;
     flussSetzen(w);
 

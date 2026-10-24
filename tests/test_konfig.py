@@ -72,6 +72,16 @@ def test_leere_optionale_sensoren_erlaubt(tmp_path):
     assert k.sensor_pv == ""
 
 
+def test_akku_sperre_entitaeten(tmp_path):
+    k = laden(schreiben(tmp_path, {**GUELTIG, "akku_steuermodus": "select.solaredge_storage_control_mode",
+                                   "akku_entladegrenze": "number.solaredge_storage_remote_discharge_limit"}))
+    assert k.akku_entladegrenze.startswith("number.")
+    with pytest.raises(KonfigFehler, match="akku_entladegrenze"):
+        laden(schreiben(tmp_path, {**GUELTIG, "akku_entladegrenze": "switch.x"}))
+    with pytest.raises(KonfigFehler, match="braucht akku_entladegrenze"):
+        laden(schreiben(tmp_path, {**GUELTIG, "akku_steuermodus": "select.x"}))
+
+
 def test_unbekannte_schluessel_ignoriert(tmp_path):
     k = laden(schreiben(tmp_path, {**GUELTIG, "gibt_es_nicht": 1}))
     assert k.max_strom_a == 24

@@ -23,6 +23,8 @@ GRENZE_STROM_1PH_A = 20
 GRENZE_MIN_STROM_A = 6
 
 _ENTITY = re.compile(r"^sensor\.[a-z0-9_]+$")
+_AUSWAHL = re.compile(r"^(select|input_select|sensor)\.[a-z0-9_]+$")
+_ZAHL = re.compile(r"^(number|input_number|sensor)\.[a-z0-9_]+$")
 
 
 class KonfigFehler(Exception):
@@ -41,6 +43,10 @@ class Konfig:
     sensor_akku_leistung: str = "sensor.se_modbus_daten_battery1_power"
     sensor_akku_leistung_invertieren: bool = True
     sensor_akku_soc: str = "sensor.se_modbus_daten_battery1_state_of_charge"
+    # Entladesperre des Hausakkus (nur Anzeige): Stellung am Wechselrichter, optional.
+    # Gesperrt = Entladegrenze <= 0 W und (falls angegeben) Steuermodus "Remote Control" (SolarEdge)
+    akku_steuermodus: str = ""
+    akku_entladegrenze: str = ""
     sensor_pv: str = ""
     # Hausverbrauch (Anzeige im Energiefluss); misst er hinter dem Zaehler, enthaelt er die Wallbox
     sensor_haus: str = ""
@@ -104,6 +110,12 @@ def pruefen(k: Konfig) -> list[str]:
         wert = getattr(k, name)
         if wert and not _ENTITY.match(wert):
             f.append(f"{name} ungueltig: '{wert}'")
+    if k.akku_steuermodus and not _AUSWAHL.match(k.akku_steuermodus):
+        f.append(f"akku_steuermodus ungueltig: '{k.akku_steuermodus}' (select.…)")
+    if k.akku_entladegrenze and not _ZAHL.match(k.akku_entladegrenze):
+        f.append(f"akku_entladegrenze ungueltig: '{k.akku_entladegrenze}' (number.…)")
+    if k.akku_steuermodus and not k.akku_entladegrenze:
+        f.append("akku_steuermodus braucht akku_entladegrenze")
     if not re.fullmatch(r"[0-9]+", k.goe_seriennummer or ""):
         f.append(f"goe_seriennummer ungueltig: '{k.goe_seriennummer}'")
     if not GRENZE_MIN_STROM_A <= k.max_strom_a <= GRENZE_STROM_A:

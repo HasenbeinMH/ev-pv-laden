@@ -65,6 +65,8 @@ gingen, und übergibt jede Ladung an den [EV Tracker](https://github.com/Hasenbe
    - **Dachflächen** (`pv_flaechen`: Neigung, Azimut, kWp) für die PV-Prognose
    - **Wettermodell** (`wettermodell`, Standard `ecmwf_icon` = Mittel aus ECMWF und ICON) – meist passt der Standard
    - optional **EV Tracker**: Adresse, Token, Fahrzeug
+   - optional **Entladesperre** des Hausakkus (`akku_steuermodus`, `akku_entladegrenze`) –
+     nur für die Anzeige im Energiefluss
 3. Starten und die Oberfläche über die Seitenleiste öffnen (sichtbar für alle HA-Benutzer).
    Unter *Diagnose* müssen alle Messwerte „gültig“ sein.
 4. Einige Tage im Trockenlauf mitlaufen lassen, dann nach

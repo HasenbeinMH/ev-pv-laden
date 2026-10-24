@@ -65,6 +65,13 @@ def signale(k: Konfig) -> list[Signal]:
     if k.sensor_akku_soc:
         liste.append(Signal("akku_soc", k.sensor_akku_soc, PROZENT, "Hausakku SoC",
                             lebenszeichen=mess))
+    if k.akku_entladegrenze:
+        # Stellung am Wechselrichter, aendert sich selten: Lebenszeichen des Messgeraets
+        liste.append(Signal("akku_grenze_w", k.akku_entladegrenze, LEISTUNG, "Hausakku Entladegrenze",
+                            pflicht=False, lebenszeichen=mess))
+    if k.akku_steuermodus:
+        liste.append(Signal("akku_modus", k.akku_steuermodus, TEXT, "Hausakku Steuermodus",
+                            pflicht=False, lebenszeichen=mess))
     if k.sensor_pv:
         liste.append(Signal("pv_w", k.sensor_pv, LEISTUNG, "PV-Erzeugung", pflicht=False,
                             lebenszeichen=mess))
@@ -108,6 +115,22 @@ def signale(k: Konfig) -> list[Signal]:
         goe("goe_inva", f"sensor.{g}_inva_delta", ZAHL, "go-e Alter Inverterdaten", pflicht=False),
     ]
     return liste
+
+
+AKKU_SPERRMODUS = "Remote Control"   # SolarEdge: nur in diesem Modus gilt die Entladegrenze
+
+
+def akku_gesperrt(werte: dict) -> bool | None:
+    """Entladesperre am Wechselrichter: Entladegrenze <= 0 W und – falls der Steuermodus
+    angegeben ist – Modus "Remote Control". None = nicht konfiguriert oder unbekannt.
+    werte: gueltige Werte (Name -> Wert, None = ungueltig)."""
+    if "akku_grenze_w" not in werte:
+        return None
+    grenze = werte["akku_grenze_w"]
+    modus = werte["akku_modus"] if "akku_modus" in werte else AKKU_SPERRMODUS
+    if grenze is None or modus is None:
+        return None
+    return grenze <= 0 and modus == AKKU_SPERRMODUS
 
 
 def umrechnen(sig: Signal, zustand: dict | None) -> float | str | bool | None:
