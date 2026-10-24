@@ -143,6 +143,7 @@ class Messwert:
     einheit: str | None = None
     empfangen: float | None = None        # time.monotonic() des letzten Empfangs
     empfangen_wand: float | None = None   # time.time() fuer die Anzeige
+    geaendert_wand: float | None = None   # HA last_changed (Unix-Zeit), falls mitgeliefert
     # Abstand zwischen zwei Empfaengen (Diagnose: wie oft kommt der Wert wirklich?)
     intervall_letzt: float | None = None
     intervall_max: float | None = None
@@ -177,6 +178,7 @@ class Prozessabbild:
             mw.einheit = None if zustand is None else (zustand.get("a") or {}).get("unit_of_measurement")
             mw.empfangen = mono
             mw.empfangen_wand = time.time() - (time.monotonic() - mono)
+            mw.geaendert_wand = None if zustand is None else zustand.get("lc")
 
     def alter_s(self, name: str, jetzt: float | None = None) -> float | None:
         mw = self.werte[name]

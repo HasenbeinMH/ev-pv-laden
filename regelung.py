@@ -143,8 +143,13 @@ class Regelung:
     def _soc_zyklus(self, mono: float, jetzt: float) -> float | None:
         pa = self.abbild
         eto = pa.wert("goe_eto", mono)
-        sensor = pa.werte["auto_soc"].wert if "auto_soc" in pa.werte else None
-        self.soc.zyklus(jetzt, eto, pa.wert("auto_steckt", mono), sensor)
+        mw = pa.werte.get("auto_soc")
+        sensor = mw.wert if mw else None
+        sensor_zeit = (mw.geaendert_wand or mw.empfangen_wand) if mw else None
+        self.soc.zyklus(jetzt, eto, pa.wert("auto_steckt", mono), sensor, sensor_zeit)
+        if self.soc.meldung:
+            db.ereignis("info", "zielzeit", self.soc.meldung)
+            self.soc.meldung = None
         self._soc_sichern()
         return self.soc.soc(eto)
 
@@ -242,6 +247,11 @@ class Regelung:
             "soc_gesetzt": None if a is None else datetime.fromtimestamp(a.zeit, self.tz).isoformat(timespec="minutes"),
             "soc_gesetzt_wert": None if a is None else a.soc,
             "sensor": self.konfig.sensor_auto_soc or None,
+            # letzter Sensorwert mit Zeitpunkt; "nach_abstecken": wird beim Anstecken uebernommen
+            "sensor_soc": self.soc.sensor_soc,
+            "sensor_zeit": None if self.soc.sensor_zeit is None
+            else datetime.fromtimestamp(self.soc.sensor_zeit, self.tz).isoformat(timespec="minutes"),
+            "sensor_nach_abstecken": self.soc.sensor_nach_abstecken(),
             "p_plan_w": self.p_plan,
             "plan": self.plan.als_dict() if self.plan else None,
         }

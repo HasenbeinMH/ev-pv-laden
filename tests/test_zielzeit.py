@@ -62,6 +62,47 @@ def test_anker_ueberlebt_neustart():
     assert neu.soc(1010.0) == s.soc(1010.0)
 
 
+def test_neustart_alter_sensorwert_ueberschreibt_eingabe_nicht():
+    s = SocSchaetzer(KAP, WG)
+    s.setzen(40.0, 1000.0, 500.0)                            # Eingabe um 500
+    neu = SocSchaetzer(KAP, WG, s.anker.als_dict())
+    neu.zyklus(600.0, 1000.0, True, 67.5, sensor_zeit=100.0)  # Erstbestand: Wert von 100
+    assert neu.anker.soc == 40.0
+    neu.zyklus(700.0, 1001.0, True, 70.0, sensor_zeit=690.0)  # wirklich neuer Wert
+    assert (neu.anker.soc, neu.anker.quelle) == (70.0, "Sensor")
+
+
+def test_anstecken_uebernimmt_sensorwert_nach_abstecken():
+    # Ablauf 21.-24.10.2026: abgesteckt, Cloud meldet unterwegs, angesteckt ohne neuen Wert
+    s = SocSchaetzer(KAP, WG)
+    s.zyklus(0.0, 1000.0, True, None)
+    s.zyklus(10.0, 1000.0, False, None)                       # abgesteckt um 10
+    s.zyklus(50.0, 1000.0, False, 67.5, sensor_zeit=50.0)     # Wert kommt unterwegs
+    assert s.anker is None                                    # nicht angesteckt: nur merken
+    s.zyklus(90.0, 1000.0, True, 67.5, sensor_zeit=50.0)      # angesteckt, Wert unveraendert
+    assert (s.anker.soc, s.anker.quelle, s.anker.zeit, s.anker.eto_kwh) == (67.5, "Sensor", 50.0, 1000.0)
+    assert s.meldung and "67.5" in s.meldung
+    assert s.soc(1010.0) > 67.5                               # rechnet ab dem Zaehler hoch
+
+
+def test_anstecken_ignoriert_sensorwert_von_vor_dem_abstecken():
+    s = SocSchaetzer(KAP, WG)
+    s.zyklus(0.0, 1000.0, True, 80.0, sensor_zeit=0.0)        # beim Laden gemeldet
+    s.zyklus(10.0, 1010.0, False, 80.0, sensor_zeit=0.0)      # abgesteckt, Auto faehrt
+    s.zyklus(90.0, 1010.0, True, 80.0, sensor_zeit=0.0)       # angesteckt: 80 % ist veraltet
+    assert s.anker is None and not s.sensor_nach_abstecken()
+
+
+def test_anstecken_nach_neustart_uebernimmt_sensorwert():
+    # Abstecken nicht gesehen (Add-on neu gestartet): Wert gilt, Zeitstempel zeigt sein Alter
+    s = SocSchaetzer(KAP, WG)
+    s.zyklus(100.0, 1000.0, None, 67.5, sensor_zeit=50.0)     # Erstbestand, Wallbox noch unbekannt
+    s.zyklus(101.0, 1000.0, False, 67.5, sensor_zeit=50.0)
+    assert s.anker is None
+    s.zyklus(200.0, 1000.0, True, 67.5, sensor_zeit=50.0)
+    assert (s.anker.soc, s.anker.zeit) == (67.5, 50.0)
+
+
 # --- Plan -----------------------------------------------------------------------------------
 
 def test_naechste_abfahrt():

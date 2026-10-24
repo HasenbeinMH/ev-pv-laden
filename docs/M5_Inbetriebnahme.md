@@ -5,37 +5,62 @@ Stellglied ohne Last (ohne Auto), dann mit Last. Jeder Schritt erst nach OK.
 
 ## Voraussetzungen
 
-- [ ] evcc-Add-on gestoppt, Boot „manuell“ (erledigt 2026-10-03)
-- [ ] go-e online, marq24-Integration „geladen“ (nicht `setup_retry`)
-- [ ] `ama` in der go-e-App auf 24 A (Warnung im Ereignisprotokoll prüfen)
-- [ ] Add-on ≥ 0.4.0 installiert, `trockenlauf: true`
+- [x] evcc-Add-on gestoppt, Boot „manuell“ (erledigt 2026-10-03)
+- [x] go-e online, marq24-Integration „geladen“ (nicht `setup_retry`)
+- [x] `ama` in der go-e-App auf 24 A (Add-on meldet beim Start „ama der Wallbox = 24 A“)
+- [x] Add-on ≥ 0.4.0 installiert, `trockenlauf: true` (0.16.1, geprüft 2026-10-21)
 
 ## Schritt 0 – Trockenlauf mit echten Werten
 
-- [ ] Alle Pflicht-Signale „gültig“, Vorzeichen plausibel (Einspeisung → Netz negativ,
-      Akku lädt → Akku negativ)
-- [ ] Spalte „Intervall (max)“: Lebenszeichen Wallbox (`rbt`) deutlich unter `max_alter_s`
-      (15 s). Sonst anderes Lebenszeichen wählen.
+Geprüft 2026-10-21 (0.16.1).
+
+- [x] Alle Pflicht-Signale „gültig“, Vorzeichen plausibel (Einspeisung → Netz negativ,
+      Akku lädt → Akku negativ). Bilanz: PV 1428 W ≈ Haus 673 W + Akku lädt 741 W + Netz ~0.
+- [x] Spalte „Intervall (max)“: Lebenszeichen Wallbox (Spannungen L1–L3, N; seit 0.15.4
+      statt `rbt`, das marq24 nur stündlich liefert) unter `max_alter_s` (15 s).
+      Gemessen über 6 min: L1–L3 zusammen höchstens ~11 s, einzeln bis ~27 s – knapp.
+      Wird es in der Diagnose enger, `max_alter_s` auf 20 setzen.
 - [ ] Stellglied-Tabelle zeigt „würde schreiben“: `lmo=4`, `fup=an`, `frc=0`, `psm=0`,
       `frm=2`, `amp=16`, dazu `ids pGrid=…` alle 2–3 s
+      (nicht angesehen – in Schritt 1 aber genau so an der Wallbox angekommen)
 - [ ] Regelentscheidungen im Ereignisprotokoll plausibel (einige Tage mitlaufen lassen,
       sonnige und wechselhafte Tage als CSV exportieren → `pytest`)
+
+Ausgangszustand der Wallbox vor dem ersten Schreiben: `lmo=3`, `frc=0`, `fup` aus, `psm=0`,
+`frm=1`, `amp=24`, `alw` an – ein angestecktes Auto hätte sofort mit 24 A geladen.
 
 ## Schritt 1 – Stellglied ohne Auto (schreibt erstmals!)
 
 Die Wallbox lädt nicht, weil kein Auto steckt – geprüft wird nur der Schreibweg.
+Durchgeführt 2026-10-21 (0.16.1), alle Punkte bestanden.
 
-1. `trockenlauf: false` in den Optionen, Add-on neu starten, dann den Trockenlauf in der
+1. `trockenlauf: false` in den Optionen, Add-on neu starten, **danach** den Trockenlauf in der
    Oberfläche (Kennzeichen oben) oder in HA (`switch.ev_pv_laden_trockenlauf`) ausschalten
-   – zwei Stufen wie Hauptschalter + Betriebsart. Modus **Nur PV**.
-   - [ ] Sollkonfiguration kommt an (Stellglied-Tabelle „ok“, Entitäten in HA)
-   - [ ] `sensor.goe_325656_pgrid` zeigt den gesendeten virtuellen Netzwert,
-         `…_inva_delta` < 3 s
-2. Modus **Aus** → [ ] `frc=1` geschrieben. Zurück auf **Nur PV** → [ ] `frc=0`.
-3. In der go-e-App `lmo` von Hand ändern → [ ] Add-on stellt nach ≤ 30 s zurück.
+   – zwei Stufen wie Hauptschalter + Betriebsart. Den Schalter erst nach dem Neustart
+   umlegen: solange die Option an ist, lehnt das Add-on das Ausschalten ab.
+   Gestoppt (Start nicht gedrückt) schreibt das Add-on nur `frc=1`
+   (gemessen: ~1,2 s nach dem Ausschalten, go-e meldet „manuell gestoppt“).
+   Dann Modus **Nur PV** und **Start**.
+   - [x] Sollkonfiguration kommt an: `lmo=4`, `fup=an`, `frc=0`, `frm=2`, `amp=16`
+         (`psm=0` stand schon) ~1 s nach Start. `amp=16`, weil ohne Auto die Phasenzahl
+         unbekannt ist (einphasige Grenze); dreiphasig stellt das Add-on 24 A.
+   - [x] `sensor.goe_325656_pgrid` zeigt den gesendeten virtuellen Netzwert (1000 W =
+         keine Freigabe, kein Auto), `…_inva_delta` 0–2 s. `…_ppv` folgt der PV-Leistung.
+         HA aktualisiert `…_pgrid` nur bei Wertänderung – Frische an `inva_delta` ablesen.
+2. Einen Modus „Aus“ gibt es seit 0.13 nicht mehr – **Stopp** sperrt die Wallbox genauso.
+   Stopp → [x] `frc=1` (~1 s). **Nur PV** + Start → [x] `frc=0` (~0,3 s).
+   Nach dem Stopp verwirft die go-e die ids-Werte (`…_pgrid` → `unknown`).
+3. In der go-e-App `lmo` von Hand ändern (bei gestartetem Laden; gestoppt hält das
+   Add-on nur `frc=1`) → [x] Add-on stellt nach ≤ 30 s zurück (in der App gesehen;
+   HA zeichnet die go-e-Selects nicht auf, der Verlauf ist dort leer).
+   Gestoppt hat das Add-on ein von der App zurückgesetztes `frc` nach ~0,4 s wieder auf 1 gestellt.
 4. **Watchdog-Zeit messen:** Add-on stoppen, `…_pgrid` beobachten.
-   - [ ] Zeit bis `unknown`/null: ____ s (Doku: ~5 s)
-5. Add-on wieder starten → [ ] Werte kommen wieder an.
+   - [x] Zeit bis `unknown`/null: **~11 s** nach dem letzten ids-Wert (12 s nach dem Stopp;
+         `inva_delta` 3 → 6 → 10 s, dann `unknown`). Doku nannte ~5 s. Danach meldet die go-e
+         „Nicht laden, weil 'Fallback'“; `frc=0` und `lmo=4` bleiben stehen.
+5. Add-on wieder starten → [x] Werte kommen wieder an (`pgrid` ~2 s nach dem Start).
+   Trockenlauf-Schalter, Lademodus und Start bleiben über den Neustart erhalten (`/data`) –
+   „Anfangswert an“ gilt nur beim allerersten Start.
 
 ## Schritt 2 – mit Auto (EV3)
 
@@ -47,14 +72,20 @@ Die Wallbox lädt nicht, weil kein Auto steckt – geprüft wird nur der Schreib
 2. Wolke: [ ] Mindestleistung während Stopp-Verzögerung, [ ] Stopp nach Verzögerung.
 3. **Min + PV** abends: [ ] lädt mit 6 A, nimmt sie die go-e über ids an? (Annahme!)
    Falls nicht → Treiber A (Schritt 3).
-4. **Sofort**: [ ] dreiphasig, 24 A, [ ] kein ids.
+4. **Sofort**: [x] dreiphasig, 24 A angefordert, [x] kein ids (2026-10-24: `psm=2` → go-e
+   „ausstecken simulieren“ ~12 s, dann Anlauf ~15 s mit 3,8 kW, danach dreiphasig).
+   Das Auto nahm nur **14,6 A je Phase (~10,1 kW)** – Limitliste der go-e ohne Grenze unter
+   24 A, also begrenzt das Auto (Ladestrom-Einstellung im EV3 prüfen).
 5. **Schieflast**: einphasig laden lassen (kleiner Überschuss) → [ ] `amp` = 16 A (bzw.
    EV3-Grenze), [ ] Strom einphasig nie über 20 A.
 6. **pPv real vs. 0** (`ids_ppv_senden`): [ ] Unterschied im Verhalten? ____
 7. **Wiederanlauf nach Wolkenpause** (Discussion #126): [ ] lädt nach der Pause wieder an.
    Falls nicht: Ereignis „wiederanlauf“ prüfen – [ ] hat `fup` umschalten geholfen?
-   [ ] Texte des Fahrzeugstatus (`sensor.goe_325656_car_value`) notieren: lädt ____,
-   wartet ____, beendet ____ (die Erkennung nimmt „beendet/warte/fehler“ aus – Annahme).
+   [x] Texte des Fahrzeugstatus (`sensor.goe_325656_car_value`), 2026-10-24: angesteckt
+   „Warte auf Fahrzeug“, lädt „Laden“, nach Stopp (`frc=1`) „Abgeschlossen“ (~3 s später).
+   „Abgeschlossen“ heißt also nicht „Auto voll“ – die Erkennung „fertig“ zählt ab 0.16.2 nur
+   den Wechsel auf „Abgeschlossen“ bei Freigabe; der Wiederanlauf nimmt nur „Warte/Fehler“
+   und ein als voll erkanntes Auto aus.
 
 ## Schritt 3 – Treiber A (M6, Ausweich)
 
@@ -95,7 +126,8 @@ Start erst ab 3 × 6 A = 4,1 kW, Stopp unter 3,8 kW (gleiche Hysterese wie einge
    [ ] nach ≤ 3 min `frc=1`, Ladung endet, [ ] Telegram kommt.
    [ ] Optionswerte von `select.goe_325656_frc` sind „0/1/2“ (Annahme – sonst Vorlage anpassen).
 4. Auto voll laden lassen → [ ] Telegram „Auto fertig geladen“ mit kWh und PV-Anteil.
-   [ ] Text des Fahrzeugstatus bei voller Batterie: ____ (Erkennung: „beendet“/„complete“).
+   [ ] Text des Fahrzeugstatus bei voller Batterie: ____ (Annahme: „Abgeschlossen“, während
+   das Add-on freigibt – sonst Erkennung in `meldungen.py` anpassen).
 
 ## Schritt 6 – EV Tracker (M9)
 

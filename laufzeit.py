@@ -174,7 +174,7 @@ class Laufzeit:
                 if not self.regelung.extern:      # Ladung von aussen: nicht eingreifen
                     self._ausfuehren(aktionen + self.treiber.zyklus(mono, self.regelung.modus_wirksam, a,
                                                                     self.regelung.pgrid_v, werte))
-                self._meldungen(werte)
+                self._meldungen(werte, a.freigabe)
                 self.tagesverlauf.hinzufuegen(time.time(), {
                     "pv": werte.get("pv_w"), "netz": werte.get("netz_w"), "akku": werte.get("akku_w"),
                     "auto": werte.get("auto_w"), "strom": ladestrom(werte),
@@ -227,7 +227,7 @@ class Laufzeit:
         aktiv = isinstance(self.treiber, TreiberIds) and self.regelung.modus_wirksam in (NUR_PV, MIN_PV)
         b = self.wiederanlauf.zyklus(mono, p.wiederanlauf, p.wiederanlauf_s, aktiv,
                                      a.freigabe and a.zustand == "laedt", werte.get("auto_steckt"),
-                                     werte.get("auto_w"), werte.get("auto_status"))
+                                     werte.get("auto_w"), werte.get("auto_status"), self.fertig.voll)
         if b.massnahme is None:
             return []
         stoerung = not b.text.startswith("lädt wieder")
@@ -310,10 +310,10 @@ class Laufzeit:
                 **(self.tracker.mqtt_zustand() if self.tracker else {}),
                 **mqtt_ha.bedien_zustand(r.param, self.trockenlauf, r.soc.soc(self.abbild.wert("goe_eto")))}
 
-    def _meldungen(self, werte: dict) -> None:
+    def _meldungen(self, werte: dict, freigabe: bool) -> None:
         plan = self.regelung.plan
         for art in self.fertig.zyklus(werte.get("auto_steckt"), werte.get("auto_w"),
-                                      werte.get("auto_status"), bool(plan and plan.erreicht)):
+                                      werte.get("auto_status"), freigabe, bool(plan and plan.erreicht)):
             daten = self._ladung_zusammenfassung()
             text = {"fertig": "Auto fertig geladen", "ziel_erreicht": "Ladestand erreicht"}[art]
             db.ereignis("info", "meldung", f"{text}: {daten}")

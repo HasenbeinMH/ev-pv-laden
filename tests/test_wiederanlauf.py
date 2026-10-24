@@ -4,8 +4,8 @@ W = 300.0
 
 
 def lauf(w, t, massnahme="fup_dann_a", aktiv=True, freigabe=True, steckt=True, auto_w=0.0,
-         status="Inaktiv/Frei"):
-    return w.zyklus(t, massnahme, W, aktiv, freigabe, steckt, auto_w, status)
+         status="Inaktiv/Frei", voll=False):
+    return w.zyklus(t, massnahme, W, aktiv, freigabe, steckt, auto_w, status, voll)
 
 
 def test_erst_nach_wartezeit():
@@ -53,11 +53,19 @@ def test_abstecken_setzt_zurueck():
 
 
 def test_keine_stoerung_wenn_auto_nicht_will_oder_keine_freigabe():
-    for kw in ({"status": "Ladung beendet"}, {"status": "Warte auf Fahrzeug"}, {"status": "Complete"},
+    for kw in ({"status": "Warte auf Fahrzeug"}, {"voll": True, "status": "Abgeschlossen"},
                {"freigabe": False}, {"aktiv": False}, {"auto_w": None}, {"steckt": None}):
         w = Wiederanlauf()
         lauf(w, 0, **kw)
         assert lauf(w, 10 * W, **kw).massnahme is None, kw
+
+
+def test_abgeschlossen_nach_pause_ist_stoerung():
+    # go-e meldet "Abgeschlossen" auch nach einer Pause - laeuft sie trotz Freigabe nicht
+    # wieder an, ist das genau der Fall fuer den Wiederanlauf (Auto nicht als voll erkannt)
+    w = Wiederanlauf()
+    lauf(w, 0, status="Abgeschlossen")
+    assert lauf(w, W, status="Abgeschlossen").massnahme == FUP
 
 
 def test_unterbrochene_bedingung_beginnt_neu():

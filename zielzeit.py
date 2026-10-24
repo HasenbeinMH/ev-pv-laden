@@ -8,6 +8,10 @@ SoC des Autos (SocSchaetzer):
   einen neuen Wert liefert, setzt den Anker. Dazwischen wird hochgerechnet:
       SoC = SoC_Anker + (eto - eto_Anker) x Ladewirkungsgrad / Akkukapazitaet
   Beim Abstecken verfaellt der Anker (das Auto faehrt, der SoC aendert sich ohne Zaehler).
+  Beim Anstecken gilt der letzte Sensorwert, wenn er nach dem Abstecken kam (die Cloud meldet
+  den SoC meist nach dem Abstellen und dann lange nicht mehr). Ein Wert von vor dem Abstecken
+  bleibt aussen vor – danach kann das Auto gefahren sein. Ist der Zeitpunkt des Absteckens
+  unbekannt (Neustart des Add-ons), gilt der Wert; die Oberflaeche zeigt seinen Zeitstempel.
 
 Plan (planen):
   benoetigt  = (Ziel-SoC - SoC) x Kapazitaet / Ladewirkungsgrad      (kWh aus der Wallbox)
@@ -45,23 +49,45 @@ class SocSchaetzer:
         self.kap = kapazitaet_kwh
         self.wg = wirkungsgrad
         self.anker: Anker | None = Anker(**anker) if anker else None
-        self._sensor_letzt: float | None = None
+        self.sensor_soc: float | None = None     # letzter Sensorwert ...
+        self.sensor_zeit: float | None = None    # ... und sein Zeitpunkt (HA last_changed)
+        self.abgesteckt_zeit: float | None = None   # None = unbekannt (seit Neustart nicht gesehen)
+        self.steckt: bool | None = None
         self.geaendert = False     # Anker neu -> speichern
+        self.meldung: str | None = None   # fuer das Ereignisprotokoll, Regelung holt ab
 
     def setzen(self, soc: float, eto_kwh: float | None, zeit: float, quelle: str = "Eingabe") -> None:
         self.anker = Anker(round(min(max(soc, 0.0), 100.0), 1), eto_kwh, zeit, quelle)
         self.geaendert = True
 
+    def sensor_nach_abstecken(self) -> bool:
+        """Letzter Sensorwert kam nach dem Abstecken (oder Abstecken unbekannt)."""
+        if self.sensor_soc is None:
+            return False
+        return (self.abgesteckt_zeit is None or self.sensor_zeit is None
+                or self.sensor_zeit >= self.abgesteckt_zeit)
+
     def zyklus(self, zeit: float, eto_kwh: float | None, steckt: bool | None,
-               sensor_soc: float | None) -> None:
+               sensor_soc: float | None, sensor_zeit: float | None = None) -> None:
         if steckt is False and self.anker is not None:
             self.anker, self.geaendert = None, True
-        if sensor_soc is not None and sensor_soc != self._sensor_letzt:
+        if steckt is False and self.steckt is True:
+            self.abgesteckt_zeit = zeit
+        if sensor_soc is not None and sensor_soc != self.sensor_soc:
             # Nur ein neuer Sensorwert setzt den Anker – sonst wuerde ein alter Wert die
             # Hochrechnung und eine neuere Eingabe ueberschreiben
-            self._sensor_letzt = sensor_soc
-            if steckt is not False:
-                self.setzen(sensor_soc, eto_kwh, zeit, "Sensor")
+            # (nach einem Neustart kommt der alte Wert erneut: neuer als der Anker muss er sein)
+            self.sensor_soc = sensor_soc
+            self.sensor_zeit = zeit if sensor_zeit is None else sensor_zeit
+            if steckt is not False and (self.anker is None or self.sensor_zeit >= self.anker.zeit):
+                self.setzen(sensor_soc, eto_kwh, self.sensor_zeit, "Sensor")
+        elif (steckt is True and self.steckt is False and self.anker is None
+              and self.sensor_nach_abstecken()):
+            # Angesteckt: letzten Sensorwert von nach dem Abstecken uebernehmen
+            self.setzen(self.sensor_soc, eto_kwh, self.sensor_zeit, "Sensor")
+            self.meldung = f"Batterie-Auto beim Anstecken vom Sensor übernommen: {self.sensor_soc:.1f} %"
+        if steckt is not None:
+            self.steckt = steckt
         if self.anker and self.anker.eto_kwh is None and eto_kwh is not None:
             # Zaehler beim Setzen unbekannt (Wallbox offline): ab jetzt hochrechnen
             self.anker.eto_kwh, self.geaendert = eto_kwh, True

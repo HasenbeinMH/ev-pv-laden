@@ -22,7 +22,7 @@ gingen, und übergibt jede Ladung an den [EV Tracker](https://github.com/Hasenbe
   SoC des Autos per Eingabe oder Sensor, dazwischen über den Zähler der Wallbox hochgerechnet.
 - **Zwei Stellglieder:**
   - *ids* (Standard): die go-e regelt selbst im Eco-Modus, das Add-on schickt alle 2 s einen
-    virtuellen Netzwert. Kommt nichts mehr, stoppt die go-e nach ~5 s von selbst.
+    virtuellen Netzwert. Kommt nichts mehr, verwirft die go-e die Werte nach ~10 s und lädt nicht mehr.
   - *A* (Ausweich): das Add-on stellt Strom und Start/Stopp direkt, fest dreiphasig.
   - Erkennung „lädt nach einer Pause nicht wieder an“ (FW 59.4) mit Gegenmaßnahme.
 - **Bilanz:** jede Sekunde aufgeteilt in PV, Hausakku und Netz; der Energiezähler der Wallbox

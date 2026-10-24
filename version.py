@@ -8,9 +8,22 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.16.1"
+VERSION = "0.16.2"
 
 CHANGELOG = [
+    {
+        "version": "0.16.2",
+        "datum": "2026-10-24",
+        "titel": "Fertig-Erkennung fuer 'Abgeschlossen', SoC-Sensor beim Anstecken",
+        "aenderungen": [
+            "Batterie-Auto: beim Anstecken gilt der letzte Sensorwert, wenn er nach dem Abstecken kam (bisher nur Werte, die nach dem Anstecken neu kamen - die Cloud meldet aber meist nur nach dem Abstellen). Anzeige mit Zeitpunkt des Sensorwerts; ohne Ladestand steht da, warum",
+            "Nach einem Neustart ueberschreibt der alte Sensorwert keine neuere Eingabe mehr",
+            "Meldung 'Auto fertig geladen' erkennt den Fahrzeugstatus 'Abgeschlossen' (bisher nur 'beendet'/'complete' - kam nie) und zaehlt nur den Wechsel darauf, waehrend das Add-on freigibt; nach einem Stopp meldet die go-e ebenfalls 'Abgeschlossen'",
+            "Wiederanlauf: 'Abgeschlossen'/'Complete' gilt nicht mehr pauschal als 'Auto will nicht' (so meldet die go-e auch eine Pause); ausgenommen ist ein als voll erkanntes Auto",
+            "docs/M5_Inbetriebnahme.md: Ergebnisse Schritt 0 und 1, Statustexte der Wallbox, Modus Aus = Stopp, Watchdog der go-e ~11 s",
+            "docs/batterie_steuerung.yaml: Vorlage B loest auf jeden Zustand aus, der 3 min ansteht (vorher blieb die Sperre bei 2 -> 4 -> 1 stehen)",
+        ],
+    },
     {
         "version": "0.16.1",
         "datum": "2026-10-16",

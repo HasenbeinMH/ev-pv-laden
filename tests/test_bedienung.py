@@ -74,20 +74,36 @@ def test_ohne_option_schaltbar_und_gespeichert(tmp_path, monkeypatch):
 
 def test_fertig_einmal_je_ansteckvorgang():
     f = FertigErkennung()
-    assert f.zyklus(True, 0.0, "Ladung beendet", False) == []      # noch nicht geladen
-    assert f.zyklus(True, 7000.0, "Lädt", False) == []
-    assert f.zyklus(True, 0.0, "Ladung beendet", False) == ["fertig"]
-    assert f.zyklus(True, 0.0, "Ladung beendet", False) == []      # nur einmal
-    f.zyklus(False, None, None, False)                              # abgesteckt
-    f.zyklus(True, 5000.0, "Lädt", False)
-    assert f.zyklus(True, 0.0, "Complete", False) == ["fertig"]
+    assert f.zyklus(True, 0.0, "Warte auf Fahrzeug", True, False) == []
+    assert f.zyklus(True, 0.0, "Abgeschlossen", True, False) == []   # noch nicht geladen
+    assert f.zyklus(True, 7000.0, "Laden", True, False) == []
+    assert f.zyklus(True, 0.0, "Abgeschlossen", True, False) == ["fertig"]
+    assert f.voll
+    assert f.zyklus(True, 0.0, "Abgeschlossen", True, False) == []   # nur einmal
+    f.zyklus(False, None, None, False, False)                          # abgesteckt
+    assert not f.voll
+    f.zyklus(True, 5000.0, "Charging", True, False)
+    assert f.zyklus(True, 0.0, "Complete", True, False) == ["fertig"]
+
+
+def test_stopp_ist_nicht_fertig():
+    # Ablauf 24.10.2026: Laden, Stopp im Add-on (Freigabe weg), ~3 s spaeter "Abgeschlossen"
+    f = FertigErkennung()
+    f.zyklus(True, 10150.0, "Laden", True, False)
+    f.zyklus(True, 10150.0, "Laden", False, False)                    # Stopp
+    assert f.zyklus(True, 0.0, "Abgeschlossen", False, False) == []
+    assert not f.voll
+    # erneuter Start: Status steht schon auf "Abgeschlossen" - das ist kein Wechsel
+    assert f.zyklus(True, 0.0, "Abgeschlossen", True, False) == []
+    f.zyklus(True, 10150.0, "Laden", True, False)
+    assert f.zyklus(True, 0.0, "Abgeschlossen", True, False) == ["fertig"]
 
 
 def test_ziel_erreicht_einmal():
     f = FertigErkennung()
-    f.zyklus(True, 11000.0, "Lädt", False)
-    assert f.zyklus(True, 11000.0, "Lädt", True) == ["ziel_erreicht"]
-    assert f.zyklus(True, 0.0, "Lädt", True) == []
+    f.zyklus(True, 11000.0, "Laden", True, False)
+    assert f.zyklus(True, 11000.0, "Laden", True, True) == ["ziel_erreicht"]
+    assert f.zyklus(True, 0.0, "Laden", True, True) == []
 
 
 def test_zusammenfassung_ohne_vorgang(tmp_path, monkeypatch):

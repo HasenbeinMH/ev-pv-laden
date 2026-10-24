@@ -1,5 +1,8 @@
 # Batteriesteuerung SolarEdge + BYD LVS über Home Assistant
-# ANGELEGT 05.10.2026: C, D, E, F (automation.batterie_c_… bis _f_…). A und B noch nicht (go-e offline).
+# ANGELEGT 05.10.2026: C, D, E, F (automation.batterie_c_… bis _f_…).
+# ANGELEGT 24.10.2026: A, B (automation.batterie_a_auto_ladt_entladung_sperren,
+#   automation.batterie_b_auto_ladt_nicht_mehr_sperre_auto_aufheben). Anlass: beim Sofort-Laden
+#   lieferte der Hausakku bis ~5 kW ins Auto, weil die Anforderung „Sperre Auto“ fehlte.
 #
 # GETESTET am Wechselrichter 05.10.2026, 12:56–12:59 (PV 2,8 kW, Verbraucher ~11 kW):
 #   Variante 1 „Charge from excess PV power only“: Werte bleiben stehen, Entladesperre wirkt –
@@ -27,8 +30,9 @@
 #     sensor.goe_325656_car                        Fahrzeugstatus als Code – direkt aus der Wallbox:
 #                                                  1 Idle, 2 Charging, 3 WaitCar, 4 Complete, 5 Error
 #                                                  (laut marq24-Quellcode). Ab Werk DEAKTIVIERT –
-#                                                  muss einmal aktiviert werden. Annahme bei der
-#                                                  Inbetriebnahme prüfen: Zustand beim Laden = "2".
+#                                                  muss einmal aktiviert werden (ist aktiviert).
+#                                                  GEPRÜFT 24.10.2026: angesteckt "3", lädt "2",
+#                                                  nach Stopp/fertig "4".
 #
 # EINMALIG – ERLEDIGT 05.10.2026 (Wunsch: bei Ausfall von HA zurück in den Normalbetrieb):
 #   select.solaredge_storage_default_mode = "Maximize self consumption"
@@ -74,18 +78,22 @@
 # ── B – Wallbox meldet nicht mehr „lädt“ → Anforderung zurücknehmen ─────────────────────────
 # Kurze Pausen (Wolke, Phasenumschaltung): erst nach 3 min ohne „lädt“. Wallbox nicht
 # erreichbar: nach 10 min freigeben – sonst bliebe die Sperre bei einem Ausfall der go-e stehen.
+# Auslöser „jeder Zustand, der 3 min ansteht“ statt from: "2" – sonst bricht 2 → 4 → 1
+# (fertig, dann abgesteckt) die 3 min ab, und die Sperre bliebe stehen.
 - alias: "Batterie B: Auto lädt nicht mehr – Sperre Auto aufheben"
   description: "Nimmt die Anforderung zurück; die Winterreserve bleibt davon unberührt"
   mode: single
   triggers:
     - trigger: state
       entity_id: sensor.goe_325656_car
-      from: "2"
+      to: null               # nur Zustandswechsel, keine Attribute
       for: "00:03:00"
+      id: stabil
     - trigger: state
       entity_id: sensor.goe_325656_car
       to: "unavailable"
       for: "00:10:00"
+      id: weg
     - trigger: homeassistant
       event: start
   conditions:
@@ -94,6 +102,16 @@
         - condition: state
           entity_id: sensor.goe_325656_car
           state: "2"
+    # nicht erreichbar zählt erst nach 10 min (Auslöser „weg“)
+    - condition: or
+      conditions:
+        - condition: trigger
+          id: weg
+        - condition: not
+          conditions:
+            - condition: state
+              entity_id: sensor.goe_325656_car
+              state: ["unavailable", "unknown"]
   actions:
     - action: input_boolean.turn_off
       target:

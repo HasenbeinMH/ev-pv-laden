@@ -3,6 +3,18 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.16.2] - 2026-10-24
+
+Fertig-Erkennung für „Abgeschlossen“, SoC-Sensor beim Anstecken, Ergebnisse der ersten Inbetriebnahme.
+
+- **Batterie-Auto vom Sensor beim Anstecken:** Bisher übernahm das Add-on nur Sensorwerte, die *nach* dem Anstecken neu kamen. Die Hersteller-Cloud meldet den Ladestand aber meist nach dem Abstellen und dann lange nicht mehr – der Ladestand blieb leer. Jetzt gilt beim Anstecken der letzte Sensorwert, wenn er nach dem Abstecken kam; ein Wert von davor nicht (das Auto kann seitdem gefahren sein). Die Anzeige nennt den Zeitpunkt des Sensorwerts, z. B. „Sensor 67,5 % (Fr., 16:56), hochgerechnet“. Ohne Ladestand steht da, warum („wird beim Anstecken übernommen“ bzw. „älter als das Abstecken – bitte eintragen“). Eine Eingabe hat weiter Vorrang
+- Nach einem Neustart überschreibt der alte Sensorwert keine neuere Eingabe mehr
+- **„Auto fertig geladen“ kam nie:** Die Erkennung suchte nach „beendet“/„complete“, die go-e meldet auf Deutsch aber „Abgeschlossen“. Dieselbe Meldung kommt allerdings auch nach einem **Stopp** (Wallbox gesperrt). Deshalb zählt jetzt nur der Wechsel auf „Abgeschlossen“, während das Add-on freigibt – ein Stopp ist keine Fertig-Meldung mehr
+- **Wiederanlauf:** „Abgeschlossen“ gilt nicht mehr pauschal als „Auto will nicht“ – so meldet die go-e auch eine Pause, also genau den Fall, in dem sie nicht wieder anläuft. Ausgenommen ist ein Auto, das als voll erkannt wurde
+- `docs/M5_Inbetriebnahme.md`: Ergebnisse von Schritt 0 und 1 (Schreibweg, Stopp = gesperrt, Watchdog der go-e ~11 s statt ~5 s), Statustexte der Wallbox
+- README: Watchdog der go-e ~10 s
+- `docs/batterie_steuerung.yaml`: Vorlage B (Sperre Auto aufheben) löst jetzt auf jeden Zustand aus, der 3 min ansteht – vorher blieb die Sperre bei 2 → 4 → 1 (fertig, dann abgesteckt) stehen. Fahrzeugstatus-Codes geprüft (3 angesteckt, 2 lädt, 4 nach Stopp/fertig)
+
 ## [0.16.1] - 2026-10-16
 
 PV-Prognose: Messung überwacht, Morgentau nachjustiert.

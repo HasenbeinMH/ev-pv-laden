@@ -523,10 +523,18 @@ function pvBis(bisIso) {
   }
   return wh / 1000;
 }
+// Kein Ladestand: sagen, warum – und was der Sensor zuletzt gemeldet hat
+function socOhneAnker(z) {
+  if (!z.sensor) return "beim Anstecken eintragen";
+  if (z.sensor_soc === null) return "Sensor liefert noch nichts";
+  const wert = `Sensor ${zahl(z.sensor_soc, 1)} % (${uhr(z.sensor_zeit)})`;
+  return z.sensor_nach_abstecken ? `${wert} – wird beim Anstecken übernommen`
+    : `${wert} ist älter als das Abstecken – bitte eintragen`;
+}
 function zielzeitZeigen(r) {
   const z = r.zielzeit, p = r.parameter, plan = z.plan;
   $("zz-soc").textContent = z.soc === null ? "–" : zahl(z.soc) + " %";
-  $("zz-soc-quelle").textContent = z.soc === null ? (z.sensor ? "Sensor liefert noch nichts" : "beim Anstecken eintragen")
+  $("zz-soc-quelle").textContent = z.soc === null ? socOhneAnker(z)
     : `${z.soc_quelle} ${zahl(z.soc_gesetzt_wert)} % (${uhr(z.soc_gesetzt)}), hochgerechnet`;
   $("zz-status").textContent = r.modus === "zielzeit"
     ? (plan && plan.sofort ? "aktiv – lädt mit Netz" : "aktiv") : "Modus „Zielzeit“ wählen, um sie zu nutzen";
