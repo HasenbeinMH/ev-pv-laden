@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.17.0"
+VERSION = "0.17.1"
 
 CHANGELOG = [
+    {
+        "version": "0.17.1",
+        "datum": "2026-10-24",
+        "titel": "'Fertig geladen' auch bei Ladung ueber die go-e-App",
+        "aenderungen": [
+            "Meldung 'Auto fertig geladen' auch bei einer Ladung von aussen (go-e-App): statt der Freigabe des Add-ons zaehlt dann frc der Wallbox - frc=1 (in der App gestoppt) ist kein 'fertig'",
+            "docs/M5_Inbetriebnahme.md: Laden ohne Add-on (Fall A), Entladesperre beim Laden, EV3 regelt selbst von 23 auf 19 A",
+        ],
+    },
     {
         "version": "0.17.0",
         "datum": "2026-10-24",

@@ -5,7 +5,8 @@ Ansteckvorgang, als MQTT-Ereignis (event.ev_pv_laden_ladung). Die Benachrichtigu
 (Telegram) macht eine HA-Automation, siehe docs/automationen.yaml.
 
 fertig:        Fahrzeugstatus wechselt auf "Abgeschlossen" (complete), nachdem in diesem
-               Ansteckvorgang geladen wurde, UND das Add-on gibt in diesem Moment frei.
+               Ansteckvorgang geladen wurde, UND laden ist in diesem Moment erlaubt (Freigabe
+               des Add-ons, bei einer Ladung ueber die go-e-App frc != 1 – laufzeit.py).
                Die go-e meldet "Abgeschlossen" auch, wenn sie gesperrt wird (Stopp, frc=1 –
                gesehen 24.10.2026). Dann ist die Freigabe schon weg, bevor der Status
                wechselt. Gezaehlt wird nur der Wechsel: steht der Status nach einer Pause

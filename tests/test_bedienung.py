@@ -11,6 +11,7 @@ from laufzeit import Laufzeit
 from meldungen import FertigErkennung
 from prozessabbild import Prozessabbild
 from regelung import Regelung
+from strategie import Ausgang
 
 
 def baue(tmp_path, monkeypatch, **konfig):
@@ -97,6 +98,38 @@ def test_stopp_ist_nicht_fertig():
     assert f.zyklus(True, 0.0, "Abgeschlossen", True, False) == []
     f.zyklus(True, 10150.0, "Laden", True, False)
     assert f.zyklus(True, 0.0, "Abgeschlossen", True, False) == ["fertig"]
+
+
+GESPERRT = Ausgang(False, 0.0, None, None, "bereit", "Gestoppt")
+
+
+def test_laden_erlaubt_bei_ladung_von_aussen(tmp_path, monkeypatch):
+    l = baue(tmp_path, monkeypatch)
+    assert not l._laden_erlaubt(GESPERRT, {"goe_frc": "0"})      # normal: Freigabe zaehlt
+    l.regelung.extern = True                                      # Ladung ueber die go-e-App
+    assert l._laden_erlaubt(GESPERRT, {"goe_frc": "0"})
+    assert not l._laden_erlaubt(GESPERRT, {"goe_frc": "1"})       # in der App gestoppt
+    assert not l._laden_erlaubt(GESPERRT, {"goe_frc": None})      # unbekannt: lieber nicht
+
+
+def test_fertig_bei_ladung_von_aussen(tmp_path, monkeypatch):
+    # Ablauf 24.10.2026: Start in der App (frc=0), Add-on gestoppt -> "von aussen"
+    l = baue(tmp_path, monkeypatch)
+    l.regelung.extern = True
+
+    def zyklus(frc, auto_w, status):
+        w = {"auto_steckt": True, "auto_w": auto_w, "auto_status": status, "goe_frc": frc}
+        l._meldungen(w, l._laden_erlaubt(GESPERRT, w))
+
+    zyklus("0", 13200.0, "Laden")
+    zyklus("1", 13200.0, "Laden")                                 # Stopp in der App ...
+    zyklus("1", 0.0, "Abgeschlossen")                             # ... ist nicht fertig
+    assert not l.fertig.voll
+    zyklus("0", 0.0, "Abgeschlossen")                             # Start: Status steht schon
+    zyklus("0", 16300.0, "Laden")
+    zyklus("0", 0.0, "Abgeschlossen")                             # Auto voll
+    assert l.fertig.voll
+    assert any("Auto fertig geladen" in e["text"] for e in db.ereignisse(10))
 
 
 def test_ziel_erreicht_einmal():

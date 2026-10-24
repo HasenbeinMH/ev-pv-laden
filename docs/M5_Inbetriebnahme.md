@@ -65,8 +65,30 @@ Durchgeführt 2026-10-21 (0.16.1), alle Punkte bestanden.
 ## Schritt 2 – mit Auto (EV3)
 
 0. Ab 0.13.0: Modus wählen, Einstellungen prüfen, **Start** drücken (gestoppt = Wallbox gesperrt).
-   [ ] Abstecken stoppt. [ ] Ladung über die go-e-App bei gestopptem HA wird nach dem Neustart
+   [ ] Abstecken stoppt. [x] Ladung über die go-e-App bei gestopptem HA wird nach dem Neustart
    als „von außen“ erkannt und nicht abgebrochen.
+
+   **Laden ohne Add-on (2026-10-24, 0.17.0), Fall A – Wallbox zuletzt im Modus Sofort**
+   (`lmo=3` Standard, `psm=2`, `frc=1`). Add-on gestoppt (HA lief weiter):
+   - [x] Start in der go-e-App setzt `frc=0` (nicht 2). go-e: „ausstecken simulieren“ ~11 s,
+         dann „Laden weil fallback (Default)“, Auto nach ~5 s auf 16 kW. Stopp in der App: `frc=1`.
+   - [x] Add-on gestartet, während die App-Ladung lief: 2 s nach dem Verbinden „Ladung über
+         go-e-App – Add-on greift bis zum Abstecken nicht ein“; `frc` blieb 0, Ladung lief weiter.
+         Erst Abstecken oder Start im Add-on beendet das.
+   - Ab 0.17.1 meldet „fertig“ auch bei einer Ladung von außen (dann zählt `frc` der
+     Wallbox statt der Freigabe). [ ] Mit echter Vollladung über die App prüfen.
+   - Die Erkennung braucht > 500 W innerhalb von 2 min nach dem Verbinden – erst laden, dann
+     Add-on starten. Sonst sperrt das gestoppte Add-on die Wallbox wieder (`frc=1`).
+   - War beim Stopp des Add-ons noch ein Ladevorgang offen (Ende erst nach 15 min ohne
+     Leistung), wird er fortgesetzt; Energie bei gestopptem Add-on bucht es als Netz
+     („ohne Aufteilung“).
+   - HA zeigt das gestoppte Add-on als „error“, obwohl es geordnet beendet wurde
+     (vermutlich Rückgabewert beim Beenden) – noch prüfen.
+
+   **Fall B – Wallbox zuletzt in Nur PV / Min + PV** (`lmo=4` Eco, ohne ids-Werte):
+   [ ] Lädt der Start in der App, oder bleibt die go-e auf „Fallback“ stehen? Dann müsste man
+   in der App zusätzlich auf Standard stellen – Abhilfe wäre, dass das Add-on beim Stopp
+   `lmo=3` setzt (Annahme, noch nicht entschieden).
 1. **Nur PV** bei Sonne: [ ] go-e startet, folgt `P_erlaubt` (Diagramm: Auto ≈ P_erlaubt),
    [ ] Netz ≈ 0, [ ] Akku lädt nicht unter Schwelle für das Auto um.
 2. Wolke: [ ] Mindestleistung während Stopp-Verzögerung, [ ] Stopp nach Verzögerung.
@@ -76,6 +98,10 @@ Durchgeführt 2026-10-21 (0.16.1), alle Punkte bestanden.
    „ausstecken simulieren“ ~12 s, dann Anlauf ~15 s mit 3,8 kW, danach dreiphasig).
    Das Auto nahm nur **14,6 A je Phase (~10,1 kW)** – Limitliste der go-e ohne Grenze unter
    24 A, also begrenzt das Auto (Ladestrom-Einstellung im EV3 prüfen).
+   Um 16:18 und 16:35 (SoC ~68 %): Auto zuerst **23,4 A (16,3 kW)**, nach 6–11 s selbst
+   zurück auf **19 A (13,2 kW)** – Wallbox fordert weiter 24 A, nichts geschrieben. Das EV3
+   regelt also selbst (Temperatur, SoC, Spannung 235 → 231 V – Annahme). Zielzeit plant mit
+   16,6 kW; bleibt es dauerhaft bei ~13 kW, `ev_max_leistung_kw` auf ~13 senken.
 5. **Schieflast**: einphasig laden lassen (kleiner Überschuss) → [ ] `amp` = 16 A (bzw.
    EV3-Grenze), [ ] Strom einphasig nie über 20 A.
 6. **pPv real vs. 0** (`ids_ppv_senden`): [ ] Unterschied im Verhalten? ____
@@ -114,8 +140,17 @@ Start erst ab 3 × 6 A = 4,1 kW, Stopp unter 3,8 kW (gleiche Hysterese wie einge
          bei Add-on ____ % → Ladewirkungsgrad ggf. anpassen)
 2. Ziel erreicht → [ ] weiter wie Nur PV. Abstecken → [ ] SoC verfällt.
 3. **Hausakku beobachten:** Bei Netzladen deckt der SolarEdge-Akku den Bezug mit – er
-   entlädt sich ins Auto (bis zu seiner Maximalleistung). [ ] Wie viel? ____ kW.
-   Entscheidung, ob das gewollt ist (sonst: Akku-Entladesperre über SolarEdge, eigener Punkt).
+   entlädt sich ins Auto (bis zu seiner Maximalleistung). [x] Wie viel? **5 kW** (Grenze des
+   Speichers, 2026-10-24 beim Sofort-Laden). Nicht gewollt → Entladesperre
+   (`docs/batterie_steuerung.yaml`, Automationen A/B seit 24.10. in HA):
+   - [x] Sperre: `car`=2 → nach 30 s A (`batterie_sperre_auto` an) → F nach 5 s
+         (Grenze 0 W, „Remote Control“) → Akku 0 W, Rest aus dem Netz. Bis dahin entlädt
+         der Akku ~30 s mit 3–5 kW (~0,04 kWh je Start).
+   - [x] Freigabe: `car`≠2 → nach 3 min B → F nach 6 s („Maximize Self Consumption“, 5000 W).
+   - [x] Auch bei Ladung über die go-e-App (Add-on gestoppt) – die Sperre hängt nur an HA.
+   - [ ] Anzeige im Energiefluss (0.17.0: Schloss am Hausakku) mit echten Werten ansehen.
+   - Fällt HA ganz aus, setzt niemand die Sperre; eine laufende Sperre fällt nach dem
+     Remote-Timeout (1 h) in den Default Mode zurück.
 
 ## Schritt 5 – Bedienung, Watchdog, Meldungen (M8)
 

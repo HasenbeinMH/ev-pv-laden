@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.17.1] - 2026-10-24
+
+- **„Auto fertig geladen“ auch bei einer Ladung über die go-e-App:** Erkennt das Add-on eine Ladung von außen, gibt es selbst nicht frei – die Meldung kam dann nie. Jetzt zählt in diesem Fall die Wallbox: Wechselt der Status auf „Abgeschlossen“, während `frc` nicht auf „gesperrt“ steht, ist das Auto voll. Ein Stopp in der App (`frc=1`, kommt etwa 1 s vor „Abgeschlossen“) bleibt keine Fertig-Meldung
+- `docs/M5_Inbetriebnahme.md`: Laden ohne Add-on (Start in der App, Erkennung „von außen“), Entladesperre beim Laden mit Zeiten, das EV3 regelt nach wenigen Sekunden selbst von 23 auf 19 A je Phase
+
 ## [0.17.0] - 2026-10-24
 
 Entladesperre des Hausakkus im Energiefluss.

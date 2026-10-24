@@ -174,7 +174,7 @@ class Laufzeit:
                 if not self.regelung.extern:      # Ladung von aussen: nicht eingreifen
                     self._ausfuehren(aktionen + self.treiber.zyklus(mono, self.regelung.modus_wirksam, a,
                                                                     self.regelung.pgrid_v, werte))
-                self._meldungen(werte, a.freigabe)
+                self._meldungen(werte, self._laden_erlaubt(a, werte))
                 self.tagesverlauf.hinzufuegen(time.time(), {
                     "pv": werte.get("pv_w"), "netz": werte.get("netz_w"), "akku": werte.get("akku_w"),
                     "auto": werte.get("auto_w"), "strom": ladestrom(werte),
@@ -309,6 +309,15 @@ class Laufzeit:
         return {**self.erfassung.mqtt_zustand(), **r.mqtt_zustand(), **self._pv_mqtt(),
                 **(self.tracker.mqtt_zustand() if self.tracker else {}),
                 **mqtt_ha.bedien_zustand(r.param, self.trockenlauf, r.soc.soc(self.abbild.wert("goe_eto")))}
+
+    def _laden_erlaubt(self, a, werte: dict) -> bool:
+        """Fuer "fertig": darf die Wallbox gerade laden? Sonst ist "Abgeschlossen" ein Stopp.
+        Normal entscheidet die Freigabe des Add-ons. Bei einer Ladung von aussen (go-e-App)
+        gibt das Add-on nicht frei – dann zaehlt die Wallbox selbst: frc=1 heisst in der App
+        gestoppt (kommt ~1 s vor "Abgeschlossen", gesehen 24.10.2026)."""
+        if self.regelung.extern:
+            return werte.get("goe_frc") not in (None, "1")
+        return a.freigabe
 
     def _meldungen(self, werte: dict, freigabe: bool) -> None:
         plan = self.regelung.plan
