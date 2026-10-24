@@ -31,6 +31,8 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&
 const zahl = (v, st = 0) => v.toLocaleString("de-DE", {minimumFractionDigits: st, maximumFractionDigits: st});
 const watt = v => v === null || v === undefined ? "–" : zahl(Math.round(v)) + " W";
 const wattHtml = v => v === null || v === undefined ? "–" : `${zahl(Math.round(v))}<small>W</small>`;
+const dauerText = min => min < 60 ? `${Math.max(Math.round(min), 1)} min`
+  : `${Math.floor(min / 60)} h ${String(Math.round(min % 60)).padStart(2, "0")} min`;
 const kwh = v => v === null || v === undefined ? "–" : zahl(v, 2) + " kWh";
 const kwhHtml = v => v === null || v === undefined ? "–" : `${zahl(v, 2)}<small>kWh</small>`;
 const zeit = iso => iso ? new Date(iso).toLocaleString("de-DE", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}) : "läuft";
@@ -304,6 +306,10 @@ function autoKarte() {
 
   // Zielzeit-Plan bzw. Herkunft des SoC
   const p = z.plan, zeilen = [];
+  if (z.restdauer_min !== null && z.restdauer_min !== undefined) {   // nur waehrend der Ladung
+    const bis = `${zahl(z.ladelimit)} %${z.ladelimit_sensor ? " (Ladelimit Auto)" : ""}`;
+    zeilen.push(z.restdauer_min > 0 ? `<b>bis ${bis} ≈ ${dauerText(z.restdauer_min)}</b>` : `<b>${bis} erreicht</b>`);
+  }
   if (r.modus === "zielzeit" && p) {
     zeilen.push(`<b>Zielzeit: ${zahl(r.parameter.ziel_soc)} % bis ${esc(uhr(p.abfahrt))}</b>`);
     if (p.erreicht) zeilen.push("Ziel erreicht – weiter nur PV");
@@ -341,6 +347,13 @@ async function startStopp() {
 }
 $("md-start").onclick = startStopp;
 
+// Abstand der Zeitbeschriftung: runde Minuten, hoechstens etwa `anzahl` Marken – sonst stehen
+// bei schmalen Diagrammen die Uhrzeiten lueckenlos nebeneinander (hideOverlap greift dann nicht)
+function zeitschritt(von, bis, anzahl) {
+  const min = Math.max((bis - von) / 60000 / anzahl, 1);
+  return ([1, 2, 5, 10, 15, 30, 60, 120, 180].find(s => s >= min) || 360) * 60000;
+}
+
 // Ladekurve der laufenden Ladung: Leistung, Strom je Phase und geladene Energie als Linien
 let kurveDiagramm = null;
 async function ladekurveLaden() {
@@ -375,7 +388,8 @@ async function ladekurveLaden() {
     animation: false, grid: {left: 40, right: 64, top: 22, bottom: 18},
     legend: {top: 0, left: 0, itemWidth: 14, itemHeight: 2, textStyle: {color: css("--text-2"), fontSize: 10}},
     tooltip: {...ax.tooltip, valueFormatter: undefined},
-    xAxis: {...ax.x, minInterval: 60000, axisLabel: {...ax.x.axisLabel, fontSize: 10}},
+    xAxis: {...ax.x, splitNumber: 4, minInterval: zeitschritt(leistung[0][0], leistung[leistung.length - 1][0], 4),
+            axisLabel: {...ax.x.axisLabel, fontSize: 10}},
     yAxis: [
       {...ax.y, min: 0, splitNumber: 3, alignTicks: true, axisLabel: {...klein, formatter: x => zahl(x) + " kW"}},
       {...ax.y, min: 0, alignTicks: true, splitLine: {show: false}, axisLabel: {...klein, formatter: x => zahl(x) + " A"}},

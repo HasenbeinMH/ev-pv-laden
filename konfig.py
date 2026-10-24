@@ -65,6 +65,9 @@ class Konfig:
     ev_max_leistung_kw: float = 22.0
     # SoC des Autos aus HA (optional, z. B. Hersteller-Integration); sonst Eingabe in der Oberflaeche
     sensor_auto_soc: str = ""
+    # Ladelimit des Autos (AC) aus HA (optional): dort hoert es von selbst auf – Ziel der
+    # Restladedauer; ohne Angabe 100 %
+    sensor_auto_ladelimit: str = ""
     ladewirkungsgrad: float = 0.9
     ev_tracker_url: str = ""
     ev_tracker_token: str = ""
@@ -114,6 +117,8 @@ def pruefen(k: Konfig) -> list[str]:
         f.append(f"akku_steuermodus ungueltig: '{k.akku_steuermodus}' (select.…)")
     if k.akku_entladegrenze and not _ZAHL.match(k.akku_entladegrenze):
         f.append(f"akku_entladegrenze ungueltig: '{k.akku_entladegrenze}' (number.…)")
+    if k.sensor_auto_ladelimit and not _ZAHL.match(k.sensor_auto_ladelimit):
+        f.append(f"sensor_auto_ladelimit ungueltig: '{k.sensor_auto_ladelimit}' (number.… oder sensor.…)")
     if k.akku_steuermodus and not k.akku_entladegrenze:
         f.append("akku_steuermodus braucht akku_entladegrenze")
     if not re.fullmatch(r"[0-9]+", k.goe_seriennummer or ""):

@@ -7,7 +7,7 @@ from konfig import Konfig
 from prozessabbild import Prozessabbild
 from regelung import Regelung
 from strategie import Parameter, SOFORT, ZIELZEIT
-from zielzeit import SocSchaetzer, Zielzeit, naechste_abfahrt
+from zielzeit import SocSchaetzer, Zielzeit, naechste_abfahrt, restladedauer_min
 
 TZ = timezone(timedelta(hours=2))
 KAP, WG = 58.3, 0.9
@@ -176,3 +176,39 @@ def test_regelung_zielzeit_schaltet_auf_sofort(reg):
     a = reg.zyklus(1.0, um(5).timestamp())
     assert reg.modus_wirksam == SOFORT and a.freigabe and a.p_erlaubt == reg.p_max
     assert db.einstellung("auto_soc")["soc"] == 40
+
+
+# --- Restladedauer bis zum Ladelimit des Autos -----------------------------------------------
+
+def test_restladedauer():
+    # 68 -> 80 %: 12 % x 58,3 kWh / 0,9 = 7,77 kWh; bei 13,2 kW = 35,3 min
+    assert restladedauer_min(68.0, 80.0, KAP, WG, 13200.0) == pytest.approx(35.3, abs=0.1)
+    assert restladedauer_min(85.0, 80.0, KAP, WG, 13200.0) == 0.0     # schon drueber
+    assert restladedauer_min(68.0, 80.0, KAP, WG, 300.0) is None      # laedt nicht wirklich
+    assert restladedauer_min(None, 80.0, KAP, WG, 13200.0) is None
+    assert restladedauer_min(68.0, 80.0, KAP, WG, None) is None
+
+
+def test_zielzeit_status_mit_ladelimit_des_autos(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_DATEI", str(tmp_path / "t.db"))
+    db.initialisieren()
+    k = Konfig(goe_seriennummer="325656", sensor_auto_ladelimit="number.ev3_ac_ladelimit")
+    r = Regelung(k, Prozessabbild(k))
+    g = "goe_325656"
+    for eid, zst in {"binary_sensor.goe_325656_car_0": z("on"), f"sensor.{g}_eto": z(1000, "kWh"),
+                     f"sensor.{g}_nrg_0": z(1), f"sensor.{g}_nrg_11": z(13200, "W")}.items():
+        r.abbild.aktualisieren(eid, zst, 0.0)
+    r.tz = TZ
+    assert r.zielzeit_status()["ladelimit"] == 100.0 and r.ladelimit() == 100.0   # Sensor fehlt noch
+    r.abbild.aktualisieren("number.ev3_ac_ladelimit", z(80, "%"), 0.0)
+    r.auto_soc_setzen(68)
+    r.zyklus(0.5, um(17).timestamp())
+    st = r.zielzeit_status()
+    assert st["ladelimit"] == 80.0 and st["ladelimit_sensor"]
+    assert st["restdauer_min"] == 35
+    r.abbild.aktualisieren("number.ev3_ac_ladelimit", z("unavailable"), 1.0)
+    assert r.ladelimit() == 100.0                                       # unbekannt: Auto laedt bis voll
+
+
+def test_konfig_ohne_ladelimit_hat_kein_signal():
+    assert "auto_ladelimit" not in Prozessabbild(Konfig(goe_seriennummer="325656")).werte

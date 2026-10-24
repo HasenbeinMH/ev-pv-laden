@@ -3,6 +3,15 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.18.0] - 2026-10-24
+
+Restladedauer bis zum Ladelimit des Autos.
+
+- **Neue Option `sensor_auto_ladelimit`** (optional): das AC-Ladelimit des Autos aus HA, vorbelegt mit `number.ev3_ac_ladelimit`. Dort hört das Auto von selbst auf zu laden
+- **Auto-Kachel:** Während der Ladung steht z. B. „bis 80 % (Ladelimit Auto) ≈ 38 min“ – gerechnet aus der SoC-Hochrechnung (Wallbox-Zähler) und der aktuellen Ladeleistung. Ohne Option rechnet das Add-on bis 100 %; ohne bekannten Ladestand oder unter 500 W steht nichts da
+- Bewusst eigene Rechnung statt der Schätzung des Autos aus der Hersteller-Cloud: Die wird beim Laden nicht aktualisiert (am 24.10. stand sie die ganze Ladung über auf 45 min)
+- **Ladekurve:** Die Zeitachse war bei längeren Ladungen nicht lesbar (Uhrzeiten alle 2 min lückenlos nebeneinander). Jetzt höchstens etwa 4–5 Marken in runden Abständen (5, 10, 15 … min)
+
 ## [0.17.1] - 2026-10-24
 
 - **„Auto fertig geladen“ auch bei einer Ladung über die go-e-App:** Erkennt das Add-on eine Ladung von außen, gibt es selbst nicht frei – die Meldung kam dann nie. Jetzt zählt in diesem Fall die Wallbox: Wechselt der Status auf „Abgeschlossen“, während `frc` nicht auf „gesperrt“ steht, ist das Auto voll. Ein Stopp in der App (`frc=1`, kommt etwa 1 s vor „Abgeschlossen“) bleibt keine Fertig-Meldung

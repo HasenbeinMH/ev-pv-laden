@@ -102,6 +102,19 @@ class SocSchaetzer:
         return min(a.soc + geladen * self.wg / self.kap * 100.0, 100.0)
 
 
+RESTDAUER_MIN_W = 500.0     # darunter laedt das Auto nicht wirklich – keine Restdauer
+
+
+def restladedauer_min(soc: float | None, ziel: float, kap_kwh: float, wirkungsgrad: float,
+                      p_auto_w: float | None) -> float | None:
+    """Minuten bis zum Ziel-SoC bei der aktuellen Ladeleistung. None = unbekannt bzw. laedt
+    nicht. Ziel ist das Ladelimit des Autos – dort hoert es von selbst auf."""
+    if soc is None or p_auto_w is None or p_auto_w < RESTDAUER_MIN_W:
+        return None
+    benoetigt = max(ziel - soc, 0.0) / 100.0 * kap_kwh / wirkungsgrad
+    return benoetigt / (p_auto_w / 1000.0) * 60.0
+
+
 def naechste_abfahrt(jetzt: datetime, uhrzeit: str) -> datetime:
     h, m = (int(x) for x in uhrzeit.split(":"))
     ziel = jetzt.replace(hour=h, minute=m, second=0, microsecond=0)

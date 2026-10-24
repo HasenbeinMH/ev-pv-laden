@@ -61,7 +61,8 @@ gingen, und übergibt jede Ladung an den [EV Tracker](https://github.com/Hasenbe
      Sensor umdrehen (intern: Netzbezug +, Akku-Entladung +)
    - **go-e-Seriennummer** (aus den Entity-IDs `goe_XXXXXX_…`)
    - **Stromgrenzen** passend zur eigenen Zuleitung und zum Auto
-   - **Auto:** Akkukapazität, Ladewirkungsgrad, höchste AC-Ladeleistung
+   - **Auto:** Akkukapazität, Ladewirkungsgrad, höchste AC-Ladeleistung; optional SoC und
+     Ladelimit des Autos aus HA (`sensor_auto_soc`, `sensor_auto_ladelimit`)
    - **Dachflächen** (`pv_flaechen`: Neigung, Azimut, kWp) für die PV-Prognose
    - **Wettermodell** (`wettermodell`, Standard `ecmwf_icon` = Mittel aus ECMWF und ICON) – meist passt der Standard
    - optional **EV Tracker**: Adresse, Token, Fahrzeug

@@ -8,9 +8,20 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.17.1"
+VERSION = "0.18.0"
 
 CHANGELOG = [
+    {
+        "version": "0.18.0",
+        "datum": "2026-10-24",
+        "titel": "Restladedauer bis zum Ladelimit des Autos",
+        "aenderungen": [
+            "Neue Option sensor_auto_ladelimit (optional, z. B. number.ev3_ac_ladelimit): AC-Ladelimit des Autos, dort hoert es von selbst auf",
+            "Auto-Kachel: waehrend der Ladung 'bis 80 % (Ladelimit Auto) ~ 38 min' - aus der SoC-Hochrechnung und der aktuellen Ladeleistung; ohne Limit bis 100 %",
+            "Eigene Rechnung statt der Schaetzung des Autos aus der Hersteller-Cloud - die wird beim Laden nicht aktualisiert",
+            "Ladekurve: Zeitachse lesbar - hoechstens etwa 4-5 Marken in runden Abstaenden statt alle 2 min",
+        ],
+    },
     {
         "version": "0.17.1",
         "datum": "2026-10-24",

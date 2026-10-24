@@ -5,7 +5,7 @@
 # Regelparameter (Modus, Hysterese, Akku-Schwelle ...) werden zur Laufzeit in der
 # Oberflaeche bzw. ueber HA-Entitaeten eingestellt und in /data gespeichert.
 name: EV PV-Laden
-version: "0.17.1"
+version: "0.18.0"
 slug: ev_pv_laden
 description: PV-Überschussladen mit go-eCharger und Hausakku-Priorität, mit Bilanz PV/Akku/Netz für den EV Tracker.
 url: "https://github.com/HasenbeinMH/ev-pv-laden"
@@ -64,6 +64,8 @@ options:
   ev_max_leistung_kw: 22
   # SoC des Autos aus HA (optional); ohne Sensor wird er in der Oberflaeche eingetragen
   sensor_auto_soc: ""
+  # AC-Ladelimit des Autos aus HA (optional): Ziel der Restladedauer, sonst 100 %
+  sensor_auto_ladelimit: number.ev3_ac_ladelimit
   # EV Tracker (optional): Adresse und Token aus EV Tracker -> Einstellungen
   ev_tracker_url: ""
   ev_tracker_token: ""
@@ -118,6 +120,7 @@ schema:
   akku_kapazitaet_kwh: float(10,200)
   ev_max_leistung_kw: float(1,350)
   sensor_auto_soc: match(^(sensor\.[a-z0-9_]+)?$)
+  sensor_auto_ladelimit: match(^((number|input_number|sensor)\.[a-z0-9_]+)?$)?
   ladewirkungsgrad: float(0.5,1)
   ev_tracker_url: str
   ev_tracker_token: password

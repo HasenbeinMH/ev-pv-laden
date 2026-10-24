@@ -82,6 +82,10 @@ def signale(k: Konfig) -> list[Signal]:
         # Aendert sich selten (Hersteller-Cloud): Alter wird hier nicht ueberwacht,
         # die Zielzeit rechnet ab dem letzten neuen Wert mit dem Wallbox-Zaehler hoch
         liste.append(Signal("auto_soc", k.sensor_auto_soc, PROZENT, "SoC Auto", pflicht=False))
+    if k.sensor_auto_ladelimit:
+        # Einstellung im Auto, aendert sich selten – wie auto_soc ohne Altersueberwachung
+        liste.append(Signal("auto_ladelimit", k.sensor_auto_ladelimit, PROZENT, "Ladelimit Auto",
+                            pflicht=False))
     if k.sensor_lebenszeichen:
         liste.append(Signal("lebenszeichen", k.sensor_lebenszeichen, TEXT,
                             "Lebenszeichen Messgeraet", pflicht=False))

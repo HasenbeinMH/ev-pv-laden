@@ -18,7 +18,7 @@ from prozessabbild import Prozessabbild
 from strategie import (AUS, MIN_PV, MODI, NUR_PV, OHNE_PV, SOFORT, SPANNUNG_V, TREIBER, WIEDERANLAUF, ZIELZEIT,
                        Ausgang, Eingang, Parameter, Strategie, pgrid_virtuell)
 from tageslicht import Tageslicht
-from zielzeit import Plan, SocSchaetzer, Zielzeit
+from zielzeit import Plan, SocSchaetzer, Zielzeit, restladedauer_min
 
 log = logging.getLogger("regelung")
 
@@ -238,10 +238,22 @@ class Regelung:
                 "pgrid_virtuell": self.pgrid_v, "p_auto": self.p_auto},
         }
 
+    def ladelimit(self) -> float:
+        """Ladelimit des Autos (Sensor, sonst 100 %) – dort hoert es von selbst auf."""
+        mw = self.abbild.werte.get("auto_ladelimit")
+        wert = mw.wert if mw else None
+        return wert if isinstance(wert, (int, float)) and 0 < wert <= 100 else 100.0
+
     def zielzeit_status(self) -> dict:
         eto = self.abbild.wert("goe_eto")
         a = self.soc.anker
+        limit = self.ladelimit()
+        rest = restladedauer_min(self.soc.soc(eto), limit, self.konfig.akku_kapazitaet_kwh,
+                                 self.konfig.ladewirkungsgrad, self.p_auto)
         return {
+            "ladelimit": limit,
+            "ladelimit_sensor": "auto_ladelimit" in self.abbild.werte,
+            "restdauer_min": None if rest is None else round(rest),
             "soc": None if self.soc.soc(eto) is None else round(self.soc.soc(eto), 1),
             "soc_quelle": None if a is None else a.quelle,
             "soc_gesetzt": None if a is None else datetime.fromtimestamp(a.zeit, self.tz).isoformat(timespec="minutes"),
