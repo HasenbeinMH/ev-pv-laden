@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.18.0"
+VERSION = "0.18.1"
 
 CHANGELOG = [
+    {
+        "version": "0.18.1",
+        "datum": "2026-11-04",
+        "titel": "Entladesperre nach Verbindungsabbruch sofort wiederherstellen (Doku)",
+        "aenderungen": [
+            "docs/batterie_steuerung.yaml: Automation F zusaetzlich bei Aenderung von Entladegrenze oder Steuermodus - nach einem Modbus-Abbruch stand die Grenze auf 5000 W, der Akku lieferte ~5 kW ins Auto",
+            "Neue Automation G: Rueckmeldeueberwachung - Sperre angefordert, Akku entlaedt > 300 W -> Meldung in HA und F erneut ausloesen",
+        ],
+    },
     {
         "version": "0.18.0",
         "datum": "2026-10-24",

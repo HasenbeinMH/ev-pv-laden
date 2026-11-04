@@ -3,6 +3,11 @@
 # ANGELEGT 24.10.2026: A, B (automation.batterie_a_auto_ladt_entladung_sperren,
 #   automation.batterie_b_auto_ladt_nicht_mehr_sperre_auto_aufheben). Anlass: beim Sofort-Laden
 #   lieferte der Hausakku bis ~5 kW ins Auto, weil die Anforderung „Sperre Auto“ fehlte.
+# GEÄNDERT 04.11.2026: F zusätzlich ausgelöst bei Änderung von Entladegrenze/Steuermodus;
+#   ANGELEGT G (automation.batterie_g_uberwachung_entladesperre). Anlass: Wechselrichter
+#   19:03–19:05 per Modbus nicht erreichbar, danach stand die Entladegrenze auf 5000 W
+#   (Steuermodus blieb „Remote Control“) – der Akku lieferte ~5 kW ins Auto, bis F von Hand
+#   ausgelöst wurde (sonst erst beim nächsten 30-min-Lauf).
 #
 # GETESTET am Wechselrichter 05.10.2026, 12:56–12:59 (PV 2,8 kW, Verbraucher ~11 kW):
 #   Variante 1 „Charge from excess PV power only“: Werte bleiben stehen, Entladesperre wirkt –
@@ -45,7 +50,8 @@
 #   input_boolean.batterie_wintermodus     „Wintermodus Batteriereserve“  ← der manuelle Schalter
 #
 # Aufbau wie in der SPS: A–D setzen nur Anforderungs-Merker, E stellt den Wintermodus,
-# F ist der einzige Baustein, der auf den Wechselrichter schreibt (ODER der Anforderungen).
+# F ist der einzige Baustein, der auf den Wechselrichter schreibt (ODER der Anforderungen),
+# G überwacht die Rückmeldung (Akkuleistung) und löst bei Bedarf F erneut aus.
 # Dadurch können sich A/B und C/D nicht gegenseitig aufheben: Endet die Ladung, bleibt die
 # Winterreserve trotzdem aktiv, und umgekehrt.
 #
@@ -213,6 +219,15 @@
         - input_boolean.batterie_sperre_auto
         - input_boolean.batterie_sperre_winter
       not_from: ["unavailable", "unknown"]
+    # Wechselrichter-Werte geändert, z. B. nach einem Modbus-Verbindungsabbruch (04.11.2026:
+    # Grenze stand danach auf 5000 W) – sofort nachstellen. Keine Schleife: F schreibt nur bei
+    # Abweichung, der Folgelauf nach dem eigenen Schreiben findet alles in Ordnung vor.
+    # Mit not_to werden reine Attributänderungen ignoriert.
+    - trigger: state
+      entity_id:
+        - number.solaredge_storage_remote_discharge_limit
+        - select.solaredge_storage_control_mode
+      not_to: ["unavailable", "unknown"]
     - trigger: homeassistant
       event: start
     - trigger: time_pattern
@@ -277,3 +292,51 @@
                 entity_id: number.solaredge_storage_remote_discharge_limit
               data:
                 value: 5000
+
+# ── G – Rückmeldeüberwachung: Sperre angefordert, Akku entlädt trotzdem ────────────────────
+# Fängt auch Fälle, in denen die Werte in HA richtig aussehen, der Wechselrichter sich aber
+# nicht daran hält. Schreibt nicht selbst auf den Wechselrichter, sondern löst F aus.
+#   sensor.se_modbus_daten_battery1_power: negativ = Entladen (GEPRÜFT 04.11.2026: −5016 W bei
+#   aufgehobener Sperre, 0 W nach dem Nachstellen durch F).
+# Zweiter Auslöser: Hat der Akku schon vor der Anforderung entladen, gibt es keinen neuen
+# Schwellen-Übergang – deshalb auch 1 min nach dem Setzen einer Anforderung prüfen.
+- alias: "Batterie G: Überwachung Entladesperre"
+  description: "Sperre angefordert, Akku entlädt < -300 W → Meldung und F erneut auslösen"
+  mode: single
+  triggers:
+    - trigger: numeric_state
+      entity_id: sensor.se_modbus_daten_battery1_power
+      below: -300
+      for: "00:00:30"
+    - trigger: state
+      entity_id:
+        - input_boolean.batterie_sperre_auto
+        - input_boolean.batterie_sperre_winter
+      to: "on"
+      for: "00:01:00"
+  conditions:
+    - condition: or
+      conditions:
+        - condition: state
+          entity_id: input_boolean.batterie_sperre_auto
+          state: "on"
+        - condition: state
+          entity_id: input_boolean.batterie_sperre_winter
+          state: "on"
+    - condition: numeric_state
+      entity_id: sensor.se_modbus_daten_battery1_power
+      below: -300
+  actions:
+    - action: persistent_notification.create
+      data:
+        notification_id: batterie_entladesperre_verletzt
+        title: "Entladesperre greift nicht"
+        message: >-
+          Sperre angefordert, aber der Hausakku entlädt mit
+          {{ states('sensor.se_modbus_daten_battery1_power') | float(0) | abs | round(0) }} W
+          (Grenze {{ states('number.solaredge_storage_remote_discharge_limit') }} W,
+          Modus {{ states('select.solaredge_storage_control_mode') }}).
+          Stellglied F wurde erneut ausgelöst – {{ now().strftime('%d.%m.%Y %H:%M') }}
+    - action: automation.trigger
+      target:
+        entity_id: automation.batterie_f_stellglied_entladesperre

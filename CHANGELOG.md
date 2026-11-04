@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.18.1] - 2026-11-04
+
+Entladesperre nach einem Verbindungsabbruch sofort wiederherstellen (nur Doku/HA-Vorlagen, das Add-on selbst ist unverändert).
+
+- **Anlass:** Am 04.11. war der Wechselrichter knapp 2 min per Modbus nicht erreichbar. Danach stand die Entladegrenze auf 5000 W (Steuermodus blieb „Remote Control“), und der Hausakku lieferte ~5 kW ins Auto – Automation F hätte erst beim nächsten 30-min-Lauf nachgestellt
+- **`docs/batterie_steuerung.yaml`, Automation F:** zusätzlich ausgelöst, sobald sich Entladegrenze oder Steuermodus ändern – die Sperre steht nach etwa 5 s wieder
+- **Neue Automation G (Rückmeldeüberwachung):** Sperre angefordert, Akku entlädt trotzdem mehr als 300 W (30 s) → Meldung in HA und F erneut auslösen. G schreibt nicht selbst auf den Wechselrichter
+
 ## [0.18.0] - 2026-10-24
 
 Restladedauer bis zum Ladelimit des Autos.
