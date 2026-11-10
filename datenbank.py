@@ -10,7 +10,7 @@ import json
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from konfig import DATA_DIR
 
@@ -61,6 +61,8 @@ MIGRATIONEN = [
 ]
 
 ZAEHLER_NAMEN = ("kwh_pv", "kwh_akku", "kwh_netz")
+# Ereignisse (Protokoll der Oberflaeche) so lange aufbewahren – sonst waechst die Tabelle endlos
+EREIGNISSE_TAGE = 90
 
 
 def jetzt() -> str:
@@ -108,6 +110,14 @@ def ereignis(ebene: str, quelle: str, text: str, pfad: str | None = None) -> Non
     with verbindung(pfad) as con:
         con.execute("INSERT INTO ereignisse (zeit, ebene, quelle, text) VALUES (?,?,?,?)",
                     (jetzt(), ebene, quelle, text))
+
+
+def ereignisse_aufraeumen(tage: int = EREIGNISSE_TAGE, pfad: str | None = None) -> int:
+    """Loescht Ereignisse, die aelter als 'tage' sind. Gibt die Anzahl zurueck.
+    zeit steht einheitlich als UTC-ISO-Text da – der Textvergleich ist ein Zeitvergleich."""
+    grenze = (datetime.now(timezone.utc) - timedelta(days=tage)).isoformat(timespec="seconds")
+    with verbindung(pfad) as con:
+        return con.execute("DELETE FROM ereignisse WHERE zeit < ?", (grenze,)).rowcount
 
 
 def einstellung(schluessel: str, standard=None, pfad: str | None = None):

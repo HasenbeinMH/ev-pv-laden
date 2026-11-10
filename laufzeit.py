@@ -45,6 +45,7 @@ EXTERN_LAEDT_W = 500.0
 # Treiberwechsel nur, wenn nicht geladen wird (sonst Sprung in der Ladeleistung)
 WECHSEL_UNTER_W = 100.0
 HALT_TIMEOUT_S = 5.0
+AUFRAEUMEN_S = 24 * 3600.0
 
 
 class Laufzeit:
@@ -83,6 +84,8 @@ class Laufzeit:
         self._trocken_letzt: frozenset = frozenset()
         self._ids_fehler = 0
         self._tasks: list[asyncio.Task] = []
+        # Laufende Schreibauftraege an HA (siehe _ausfuehren)
+        self._auftraege: set[asyncio.Task] = set()
 
     async def starten(self) -> None:
         try:
@@ -112,6 +115,7 @@ class Laufzeit:
         self._tasks.append(asyncio.create_task(self._zyklus(), name="zyklus"))
         self.tracker = Uebergabe(self.konfig)
         self._tasks.append(asyncio.create_task(self.tracker.laufen(), name="tracker"))
+        self._tasks.append(asyncio.create_task(self._aufraeumen(), name="aufraeumen"))
 
         daten = verbindung_aus_umgebung()
         if os.environ.get("EVPV_SIMULATION") and not IST_ADDON:
@@ -342,6 +346,17 @@ class Laufzeit:
                      start=offen.start.isoformat(timespec="minutes"))
         return d
 
+    async def _aufraeumen(self) -> None:
+        """Alte Ereignisse loeschen: beim Start und danach einmal am Tag."""
+        while True:
+            try:
+                n = await asyncio.to_thread(db.ereignisse_aufraeumen)
+                if n:
+                    log.info("Datenbank: %d Ereignisse aelter als %d Tage geloescht", n, db.EREIGNISSE_TAGE)
+            except Exception as e:
+                log.warning("Datenbank: Aufraeumen fehlgeschlagen: %s", e)
+            await asyncio.sleep(AUFRAEUMEN_S)
+
     async def _heute_vorfuellen(self) -> None:
         """Tageskurve nach einem Neustart aus der HA-Historie seit Mitternacht nachladen."""
         for _ in range(120):              # bis HA verbunden ist und die Einheiten bekannt sind
@@ -429,7 +444,11 @@ class Laufzeit:
                 self._trocken_letzt = texte
             return
         for akt in aktionen:
-            asyncio.create_task(self._aufrufen(akt))
+            # Referenz halten: die Ereignisschleife kennt Tasks nur schwach, ohne sie kann
+            # ein laufender Schreibauftrag weggeraeumt werden
+            task = asyncio.create_task(self._aufrufen(akt))
+            self._auftraege.add(task)
+            task.add_done_callback(self._auftraege.discard)
 
     async def _aufrufen(self, akt: Aktion) -> None:
         jetzt = datetime.now().strftime("%H:%M:%S")

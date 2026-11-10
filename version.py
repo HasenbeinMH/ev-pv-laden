@@ -8,9 +8,19 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.18.1"
+VERSION = "0.18.2"
 
 CHANGELOG = [
+    {
+        "version": "0.18.2",
+        "datum": "2026-11-10",
+        "titel": "Ereignisse aufraeumen, kleine Robustheitskorrekturen",
+        "aenderungen": [
+            "Ereignisse (Protokoll der Oberflaeche) werden nach 90 Tagen geloescht - beim Start und einmal am Tag; vorher wuchs die Tabelle unbegrenzt",
+            "Tageskurve/Ladekurve/Prognose: Web-Anfrage liest eine Kopie der Minutenwerte - vermeidet einen seltenen Fehler 500 beim Minutenwechsel",
+            "Schreibauftraege an Home Assistant und MQTT-Ereignisse halten ihre Task-Referenz, damit kein laufender Auftrag weggeraeumt wird",
+        ],
+    },
     {
         "version": "0.18.1",
         "datum": "2026-11-04",

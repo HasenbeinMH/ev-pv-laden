@@ -286,6 +286,7 @@ class MqttHA:
         self._zustand: dict | None = None
         self._client: aiomqtt.Client | None = None
         self._neu = asyncio.Event()
+        self._auftraege: set[asyncio.Task] = set()
 
     def zustand_setzen(self, zustand: dict) -> None:
         """Neuer Zustand – wird beim naechsten Durchlauf gesendet (nicht blockierend)."""
@@ -295,8 +296,11 @@ class MqttHA:
     def ereignis_senden(self, art: str, daten: dict) -> None:
         """Einmaliges Ereignis (nicht retained): event_type + Attribute."""
         if self._client and self.verbunden:
-            asyncio.create_task(self._client.publish(
+            # Referenz halten, sonst kann der Task vor dem Senden weggeraeumt werden
+            task = asyncio.create_task(self._client.publish(
                 EREIGNIS, json.dumps({"event_type": art, **daten}), qos=1, retain=False))
+            self._auftraege.add(task)
+            task.add_done_callback(self._auftraege.discard)
         else:
             log.warning("Ereignis %s nicht gesendet – MQTT nicht verbunden", art)
 

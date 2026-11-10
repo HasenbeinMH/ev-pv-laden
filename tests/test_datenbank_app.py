@@ -19,6 +19,22 @@ def test_ereignisse(tmp_path):
     assert [x["text"] for x in e] == ["zwei", "eins"]
 
 
+def test_ereignisse_aufraeumen(tmp_path):
+    """Nur Ereignisse jenseits der Aufbewahrungszeit verschwinden."""
+    from datetime import datetime, timedelta, timezone
+    pfad = str(tmp_path / "t.db")
+    db.initialisieren(pfad)
+    jetzt = datetime.now(timezone.utc)
+    with db.verbindung(pfad) as con:
+        for tage, text in ((91, "alt"), (89, "knapp")):
+            con.execute("INSERT INTO ereignisse (zeit, ebene, quelle, text) VALUES (?,?,?,?)",
+                        ((jetzt - timedelta(days=tage)).isoformat(timespec="seconds"), "info", "test", text))
+    db.ereignis("info", "test", "neu", pfad)
+    assert db.ereignisse_aufraeumen(90, pfad) == 1
+    assert [x["text"] for x in db.ereignisse(10, pfad)] == ["neu", "knapp"]
+    assert db.ereignisse_aufraeumen(90, pfad) == 0
+
+
 def test_app_startet_ohne_ha_und_zeigt_status():
     """Ohne SUPERVISOR_TOKEN/HA_URL: App laeuft, meldet fehlende Verbindung, schreibt nichts."""
     from fastapi.testclient import TestClient

@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.18.2] - 2026-11-10
+
+Ereignisse aufräumen, kleine Robustheitskorrekturen. Am Regelverhalten ändert sich nichts.
+
+- **Ereignisse nach 90 Tagen löschen:** Die Ereignisliste (Seite „Diagnose“) wuchs bisher unbegrenzt. Jetzt wird beim Start und einmal am Tag alles gelöscht, was älter als 90 Tage ist. Bilanz, Zähler und Ladevorgänge bleiben unberührt
+- **Tageskurve, Ladekurve, Prognose:** Die Web-Anfrage liest eine Kopie der Minutenwerte – vermeidet einen seltenen Fehler beim Minutenwechsel, wenn der Zyklus gleichzeitig einen Wert anhängt
+- **Schreibaufträge:** Befehle an Home Assistant und MQTT-Ereignisse halten ihre Task-Referenz, damit kein laufender Auftrag vorzeitig weggeräumt werden kann
+
 ## [0.18.1] - 2026-11-04
 
 Entladesperre nach einem Verbindungsabbruch sofort wiederherstellen (nur Doku/HA-Vorlagen, das Add-on selbst ist unverändert).
