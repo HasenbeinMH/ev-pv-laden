@@ -962,18 +962,23 @@ function laden() {
   if (s === "#prognose") { prognoseLaden(); pvLaden(); }
   if (s === "#diagnose") ereignisse();
 }
-const auf = (...seiten) => seiten.includes(location.hash || "#live");
+// Im Hintergrund (Tab nicht sichtbar) wird nichts abgefragt – spart Last auf dem HA-Rechner
+const sichtbar = () => !document.hidden;
+const auf = (...seiten) => sichtbar() && seiten.includes(location.hash || "#live");
+document.addEventListener("visibilitychange", () => {
+  if (sichtbar()) { status(); laden(); uhrStellen(); }   // zurueck im Vordergrund: sofort auffrischen
+});
 flussAufbauen();
 seiteZeigen();
 status();
-setInterval(status, 2000);
+setInterval(() => { if (sichtbar()) status(); }, 2000);
 setInterval(() => { if (auf("#live", "#laden")) regelung(); }, 2000);
 setInterval(() => { if (auf("#bilanz")) verlauf(); }, 5000);
 setInterval(() => { if (auf("#live", "#laden", "#bilanz")) bilanz(); }, 5000);
 setInterval(() => { if (auf("#live")) heuteLaden(); }, 60000);
 setInterval(() => { if (auf("#live")) ladekurveLaden(); }, 30000);
 setInterval(() => { if (auf("#diagnose")) ereignisse(); }, 10000);
-setInterval(prognoseLaden, 300000);
+setInterval(() => { if (sichtbar()) prognoseLaden(); }, 300000);
 setInterval(() => { if (auf("#prognose")) pvLaden(); }, 60000);
 uhrStellen();
 setInterval(uhrStellen, 10000);

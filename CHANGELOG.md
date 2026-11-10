@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des Add-ons EV PV-Laden.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [0.18.3] - 2026-11-10
+
+Oberfläche pausiert im Hintergrund, Obergrenzen für Abhängigkeiten. Am Regelverhalten ändert sich nichts.
+
+- **Oberfläche:** Ist der Browser-Tab nicht sichtbar, fragt die Seite keine Daten mehr ab (bisher alle 2 s, auch im Hintergrund). Beim Zurückkehren wird sofort aufgefrischt. Eine dauerhaft angezeigte Seite (Wandtablet) läuft unverändert weiter
+- **Abhängigkeiten:** Obergrenzen für jinja2 (<4), aiohttp (<4) und aiomqtt (<3). Kleine Updates kommen beim Bau des Images weiter automatisch, ein großer Versionssprung mit geänderten Schnittstellen nicht mehr ungetestet
+
 ## [0.18.2] - 2026-11-10
 
 Ereignisse aufräumen, kleine Robustheitskorrekturen. Am Regelverhalten ändert sich nichts.

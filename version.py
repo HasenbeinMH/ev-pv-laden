@@ -8,9 +8,18 @@ Pflege bei einer neuen Version (wie beim EV Tracker):
   3. CHANGELOG.md (Update-Dialog des Add-on-Stores) passend ergaenzen
 """
 
-VERSION = "0.18.2"
+VERSION = "0.18.3"
 
 CHANGELOG = [
+    {
+        "version": "0.18.3",
+        "datum": "2026-11-10",
+        "titel": "Oberflaeche pausiert im Hintergrund, Obergrenzen fuer Abhaengigkeiten",
+        "aenderungen": [
+            "Oberflaeche: ist der Browser-Tab nicht sichtbar, werden keine Daten abgefragt; beim Zurueckkehren wird sofort aufgefrischt",
+            "requirements.txt: Obergrenzen fuer jinja2 (<4), aiohttp (<4) und aiomqtt (<3) - ein grosser Versionssprung kommt nicht mehr ungetestet ins Image",
+        ],
+    },
     {
         "version": "0.18.2",
         "datum": "2026-11-10",

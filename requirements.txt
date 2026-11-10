@@ -1,9 +1,11 @@
 fastapi>=0.142
 uvicorn[standard]>=0.54
-jinja2>=3.1.6
+# Obergrenzen: kleine Updates kommen beim Bau des Images automatisch, ein grosser
+# Versionssprung (geaenderte Schnittstellen) erst nach einem Test
+jinja2>=3.1.6,<4
 # Home Assistant: WebSocket (Messwerte als Push) und REST (Services)
-aiohttp>=3.14
+aiohttp>=3.14,<4
 # MQTT-Discovery: HA-Entitaeten (Zaehler, Leistungen, Lebenszeichen)
-aiomqtt>=2.5.1
+aiomqtt>=2.5.1,<3
 # Zeitzonen-Datenbank fuer zoneinfo (Tagesgrenzen), im slim-Image nicht garantiert
 tzdata
